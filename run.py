@@ -2,6 +2,7 @@
 import sys
 import json
 import torch
+from tqdm import tqdm
 import numpy as np
 from torch import Tensor
 from torch.nn import Linear, Parameter
@@ -85,9 +86,10 @@ def train(loader, val, model, optimizer, device, weights=None):
     total_loss = []
     trainscores = []
     scores = []
-    for data in loader:
+    for data in tqdm(loader):
         data.to(device)
         optimizer.zero_grad()
+        print(data)
         try:
             out = model(data.x, data.edge_index)
             print(out.shape)
@@ -95,13 +97,15 @@ def train(loader, val, model, optimizer, device, weights=None):
             _,pred = torch.max(out, 1)
         except:
             out = model(data)
+            print(out.shape)
+            print(data.y.shape)
             loss = criterion(out, data.y)
-            _,pred = torch.max(F.softmax(out), 1)
+            _,pred = torch.max(F.softmax(out, dim=1), 1)
         loss.backward()
         optimizer.step()
         total_loss.append(float(loss))
         trainscores.append(f1_score(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
-    for data in val:
+    for data in tqdm(val):
         data.to(device)
         model.eval()
         try:
@@ -141,9 +145,9 @@ def test(traindata, valdata, testdata, in_channels, hidden_channels, out_channel
     except:
         weights=None
 
-    train_loader = DataLoader(traindata, 32, True)
-    val_loader = DataLoader(valdata, 32)
-    test_loader = DataLoader(testdata, 32)
+    train_loader = DataLoader(traindata, args['bz'], True)
+    val_loader = DataLoader(valdata, args['bz'])
+    test_loader = DataLoader(testdata, args['bz'])
 
     model = model.to(device)
     '''
@@ -162,7 +166,7 @@ def test(traindata, valdata, testdata, in_channels, hidden_channels, out_channel
     model.eval()
     pred = []
     y = []
-    for data in test_loader:
+    for data in tqdm(test_loader):
         data = data.to(device)
         if modeltype != 'san':
             pred = model(data.x, data.edge_index).argmax(dim=-1)

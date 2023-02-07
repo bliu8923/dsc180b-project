@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.utils import get_laplacian, to_torch_coo_tensor, dense_to_sparse
 import torch_geometric.utils as tg
+from tqdm import tqdm
 
 class GCN(torch.nn.Module):
     '''
@@ -51,15 +52,17 @@ class GCN(torch.nn.Module):
             x = (x * attention_weights).sum(dim=-2)
             return x
         else:
-            return x
+            return F.softmax(x)
 
     def positional_encoding(self, x, edge_index):
         """
         Computes positional encoding for each node by the eigenvalues of the graph Laplacian matrix.
         """
+
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         lap = get_laplacian(edge_index, normalization="sym", num_nodes=x.size(0))[0]
         lap = tg.to_dense_adj(lap)#, size=x.size(0))
-        eigvals, _ = torch.symeig(lap, eigenvectors=False)
+        eigvals = torch.linalg.eigvalsh(lap, UPLO='U')
         eigvals = eigvals.to(device)
         return x + eigvals.T
+
