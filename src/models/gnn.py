@@ -20,7 +20,7 @@ class GCN(torch.nn.Module):
                 start = in_channels
             if i == num_layers - 1:
                 end = out_channels
-            self.layers.append(GCNConv(start, end, cached=True, normalize=False))
+            self.layers.append(GCNConv(start, end, cached=False, normalize=True))
         '''
         self.conv1 = GCNConv(in_channels, hidden_channels, cached=True,
                              normalize=False)
@@ -52,7 +52,7 @@ class GCN(torch.nn.Module):
             x = (x * attention_weights).sum(dim=-2)
             return x
         else:
-            return F.softmax(x)
+            return x
 
     def positional_encoding(self, x, edge_index):
         """

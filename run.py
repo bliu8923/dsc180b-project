@@ -184,7 +184,7 @@ def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
     modeltypes = ['gcn', 'gin', 'gan', 'san']
     '''Trains and tests the model type given (defaults to all models)'''
     if modeltype == 'gcn':
-        model = GCN(in_channels, hidden_channels, 8, out_channels)
+        model = GCN(in_channels, hidden_channels, 8, out_channels, False, False)
     elif modeltype == 'gin':
         model = GIN(in_channels, hidden_channels, 8, out_channels)
     elif modeltype == 'gan':
@@ -211,9 +211,9 @@ def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
     for i in range(epochs):
         model.train()
         optimizer.zero_grad()
-        if modeltype != 'san':
+        try:
             out = model(data.x, data.edge_index)
-        else:
+        except:
             out = model(data)
         loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
@@ -221,10 +221,11 @@ def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
 
 
     model.eval()
-    if modeltype != 'san':
+    try:
         pred = model(data.x, data.edge_index).argmax(dim=-1)
-    else:
+    except:
         pred = model(data)
+        _, pred = torch.max(F.softmax(pred), 1)
     accs = []
     for mask in [data.train_mask, data.val_mask, data.test_mask]:
         accs.append(f1_score(data.y[mask].cpu().tolist(), pred[mask].cpu().tolist(), average='macro'))
