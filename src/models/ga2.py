@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as gnn
 from torch_geometric.nn import MessagePassing, GCNConv, global_mean_pool
-from torch_geometric.utils import normalized_laplacian, add_self_loops, degree
+from torch_geometric.utils import add_self_loops, degree
 
 class GraphAttention2(nn.Module):
     #prioritized by dist
@@ -21,7 +21,13 @@ class GraphAttention2(nn.Module):
         nn.init.xavier_uniform_(self.weight)
         nn.init.xavier_uniform_(self.attention)
 
-    def forward(self, x, edge_index, edge_dist):
+    def forward(self, batch):
+        print(batch)
+        x = batch.x
+        edge_index = batch.edge_index
+
+        #Take each row of edge index, take the connected nodes
+        edge_dist = torch.norm(pos[col] - pos[row], p=2, dim=-1).view(-1, 1)
         x = x.unsqueeze(0) if x.dim() == 2 else x
         edge_index = edge_index.t().contiguous()
         edge_dist = edge_dist.view(-1, 1)

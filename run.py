@@ -13,16 +13,17 @@ import torch.nn as nn
 from torch_geometric.logging import init_wandb, log
 import torch_geometric.transforms as T
 from torch_geometric.loader import DataLoader
+from torch_geometric.graphgym.loader import set_dataset_attr
 from torch_geometric.datasets import Planetoid
-from torch_geometric.utils import train_test_split_edges
-from sklearn.model_selection import train_test_split
+from torch_geometric.utils import train_test_split_edges, add_random_edge
+from sklearn.model_selection import ShuffleSplit
 import argparse
 import gc
 
 from torch_geometric.graphgym.register import register_config
 
 
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, average_precision_score
 from sklearn.utils.class_weight import compute_class_weight
 
 from src.models.gnn import GCN
@@ -32,6 +33,15 @@ from torch_geometric.nn import GIN, GAT
 from src.models.gtn import GTN
 from src.models.san import SAN
 from src.get_data import get_data
+from src.models.ga1 import GraphAttention1
+from src.models.ga2 import GraphAttention2
+from src.loss.weighted_ce import weighted_cross_entropy
+
+#SUPPRESSING WARNINGS FOR AP
+import warnings
+warnings.filterwarnings('ignore')
+
+
 parser = argparse.ArgumentParser()
 
 if sys.argv[1] == 'test':
@@ -44,8 +54,6 @@ else:
     # Model Related
     parser.add_argument('--model', default='san', type=str,
                         help='Model being used')
-    parser.add_argument('--hidden', default=32, type=int,
-                        help='Number of hidden channels')
     parser.add_argument('--test', default=False, type=bool,
                         help='Test on smaller dataset for performance')
 
@@ -77,60 +85,92 @@ else:
     parser.add_argument('--accuracy_metric', default='macro_f1', type=str,
                         help='which metric to perform for classification accuracy')
 
+    parser.add_argument('--add_edges', default=0, type=float,
+                        help='ratio of added edges')
+
+    parser.add_argument('--task', default='node', type=str,
+                        help='(node) (graph) classification')
+
+    parser.add_argument('--trainsplit', default=0.6, type=float,
+                        help='ratio for train split')
+    parser.add_argument('--valsplit', default=0.2, type=float,
+                        help='ratio for val split')
+    parser.add_argument('--testsplit', default=0.2, type=float,
+                        help='ratio for test split')
+    
+    parser.add_argument('--metric', default='macrof1', type=str,
+                        help='accuracy metric')
+
     args = vars(parser.parse_args())
 
-def train(loader, val, model, optimizer, device, weights=None):
+def train(loader, val, model, optimizer, device, metric, weights=None):
     model.to(device)
     model.train()
-    criterion = nn.CrossEntropyLoss()
+    criterion = weighted_cross_entropy
     total_loss = []
     trainscores = []
     scores = []
+    
     for data in tqdm(loader):
+        model.train()
         data.to(device)
         optimizer.zero_grad()
-        print(data)
+        
         try:
             out = model(data.x, data.edge_index)
-            print(out.shape)
-            loss = criterion(out, data.y)
-            _,pred = torch.max(out, 1)
         except:
             out = model(data)
-            print(out.shape)
-            print(data.y.shape)
-            loss = criterion(out, data.y)
-            _,pred = torch.max(F.softmax(out, dim=1), 1)
+            
+        loss, pred_score = criterion(out, data.y)
+        if metric == f1_score:
+            _, pred = torch.max(F.softmax(out, dim=1), 1)
+        elif metric == average_precision_score:
+            pred = F.softmax(out, dim=1)
         loss.backward()
         optimizer.step()
         total_loss.append(float(loss))
-        trainscores.append(f1_score(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
+        trainscores.append(metric(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
+
     for data in tqdm(val):
-        data.to(device)
         model.eval()
+        data.to(device)
         try:
             pred = model(data.x, data.edge_index)
             _,pred = torch.max(pred,1)
         except:
             pred = model(data)
-            _,pred = torch.max(F.softmax(pred), 1)
-        scores.append(f1_score(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
+            if metric == f1_score:
+                _, pred = torch.max(F.softmax(pred, dim=1), 1)
+            elif metric == average_precision_score:
+                pred = F.softmax(pred, dim=1)
+        scores.append(metric(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
     return np.mean(total_loss), np.mean(trainscores), np.mean(scores)
 
 def test(traindata, valdata, testdata, in_channels, hidden_channels, out_channels, args, epochs = 200, modeltype='all'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Device: ' + str(device))
+    
+    #Set pooling based on task
+    if args['task'] == 'graph':
+        pool = True
+    else:
+        pool = False
+
+    #Set model type for testing
     modeltypes = ['gcn', 'gin', 'gan', 'san']
     '''Trains and tests the model type given (defaults to all models)'''
     if modeltype == 'gcn':
-        #model = GCN(in_channels, hidden_channels, 8, out_channels)
-        model = GCN(in_channels, hidden_channels, 8, out_channels, pos_enc=True, attention=False)
+        model = GCN(in_channels, in_channels, 8, out_channels, pos_enc=False, attention=False, add_edge=args['add_edges'], pool=pool)
     elif modeltype == 'gin':
-        model = GIN(in_channels, hidden_channels, 8, out_channels)
+        model = GIN(in_channels, in_channels, 8, out_channels)
     elif modeltype == 'gan':
-        model = GAT(in_channels, hidden_channels, 8, out_channels)
+        model = GAT(in_channels, in_channels, 8, out_channels)
     elif modeltype == 'san':
-        model = SAN(in_channels, hidden_channels, 4, out_channels, 4)
+        model = SAN(in_channels, in_channels, 4, out_channels, 4)
+    elif modeltype == 'gcn+a':
+        model = GraphAttention1(in_channels, out_channels)
+    elif modeltype == 'gcn+a2':
+        model = GraphAttention2(in_channels, out_channels, heads=4)
     elif modeltype == 'all':
         results = {}
         for i in range(len(modeltypes)):
@@ -139,43 +179,49 @@ def test(traindata, valdata, testdata, in_channels, hidden_channels, out_channel
     else:
         raise NameError("No model of " + modeltype + " found.")
 
+    model = model.to(device)
 
+    #Set weights
     try:
         weights = np.flip(compute_class_weight('balanced', classes=range(0,traindata.num_classes), y = traindata.data.y.tolist()), axis=0).copy()
     except:
         weights=None
-
+    
+    #Dataloaders
     train_loader = DataLoader(traindata, args['bz'], True)
     val_loader = DataLoader(valdata, args['bz'])
     test_loader = DataLoader(testdata, args['bz'])
-
-    model = model.to(device)
-    '''
-    optimizer = torch.optim.Adam([
-        dict(params=model.parameters(), weight_decay=5e-4, momentum=0.7)
-    ], lr=0.001)
-    '''
+    
+    
+    #Set optimizer
     optimizer = torch.optim.Adam([
         dict(params=model.parameters(), weight_decay = args['weight_decay'], momentum=args['momentum'])
     ], lr=args['lr'])
-
+    
+    #Set accuracy metric
+    if args['metric'] == 'macrof1':
+        metric = f1_score
+    elif args['metric'] == 'ap':
+        metric = average_precision_score
+    
     for i in range(epochs):
-        loss, trainacc, acc = train(train_loader, val_loader, model, optimizer, device, weights)
-        print(modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(trainacc) + ', val acc: ' + str(acc))
+        loss, trainacc, acc = train(train_loader, val_loader, model, optimizer, device, metric, weights)
+        print("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(trainacc) + ', val acc: ' + str(acc))
 
     model.eval()
-    pred = []
-    y = []
+    scores = []
     for data in tqdm(test_loader):
         data = data.to(device)
-        if modeltype != 'san':
+        try:
             pred = model(data.x, data.edge_index).argmax(dim=-1)
-        else:
+        except:
             pred = model(data)
-        _,pred = torch.max(F.softmax(pred), 1)
-        pred += pred.tolist()
-        y += data.y.tolist()
-    return f1_score(testdata.y, pred, average='macro')
+        if metric == f1_score:
+            _, pred = torch.max(F.softmax(pred, dim=1), 1)
+        elif metric == average_precision_score:
+            pred = F.softmax(pred, dim=1)
+        scores.append(metric(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
+    return np.mean(scores)
 
 def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, modeltype='all'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -184,7 +230,7 @@ def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
     modeltypes = ['gcn', 'gin', 'gan', 'san']
     '''Trains and tests the model type given (defaults to all models)'''
     if modeltype == 'gcn':
-        model = GCN(in_channels, hidden_channels, 8, out_channels, False, False)
+        model = GCN(in_channels, hidden_channels, 8, out_channels, True, True)
     elif modeltype == 'gin':
         model = GIN(in_channels, hidden_channels, 8, out_channels)
     elif modeltype == 'gan':
@@ -212,7 +258,7 @@ def test_test(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
         model.train()
         optimizer.zero_grad()
         try:
-            out = model(data.x, data.edge_index)
+            out = model(data.x[data.train_mask], data.edge_index[data.train_mask])
         except:
             out = model(data)
         loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
@@ -248,16 +294,66 @@ def main(args):
         gc.collect()
         torch.cuda.empty_cache()
         normalize_features = False
+
+        # Set split datasets for task (Graph Task Splits Courtesy of GraphGPS)
+        task_level = args['task']
         train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
         val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
         test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
+        '''
+        if task_level == 'node':
+            train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
+            val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
+            test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
+        elif task_level == 'graph':
+            dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
+            val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
+            test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
+            n1, n2, n3 = len(dataset), len(val_dataset), len(test_dataset)
+            data_list = [dataset.get(i) for i in range(n1)] + \
+                        [val_dataset.get(i) for i in range(n2)] + \
+                        [test_dataset.get(i) for i in range(n3)]
+
+            dataset._indices = None
+            dataset._data_list = data_list
+            dataset.data, dataset.slices = dataset.collate(data_list)
+
+            split_names = [
+                'train_graph_index', 'val_graph_index', 'test_graph_index'
+            ]
+            split_ratios = [args['trainsplit'], args['valsplit'], args['testsplit']]
+            train_index, val_test_index = next(
+                ShuffleSplit(
+                    train_size=split_ratios[0],
+                ).split(dataset.data.y, dataset.data.y)
+            )
+            val_index, test_index = next(
+                ShuffleSplit(
+                    train_size=split_ratios[1] / (1 - split_ratios[0]),
+                ).split(dataset.data.y[val_test_index], dataset.data.y[val_test_index])
+            )
+            val_index = val_test_index[val_index]
+            test_index = val_test_index[test_index]
+            print(train_index, val_index, test_index)
+            for split_name, split_index in zip(split_names, [train_index, val_index, test_index]):
+                set_dataset_attr(dataset, split_name, split_index, 3)
+            print(dataset.data)
+            train_dataset = dataset[train_index]
+            print(train_dataset)
+            val_dataset = dataset[val_index]
+            print(val_dataset)
+            test_dataset = dataset[test_index]
+            print(test_dataset)
+
+        else:
+            raise ValueError(f"Unsupported dataset task level: {task_level}")
+        '''
         if normalize_features:
             train_dataset.transform = T.NormalizeFeatures()
             val_dataset.transform = T.NormalizeFeatures()
             test_dataset.transform = T.NormalizeFeatures()
         in_channels = train_dataset.num_features
         out_channels = train_dataset.num_classes
-
         print(test(train_dataset, val_dataset, test_dataset, in_channels, 8, out_channels, args, args['epoch'], args['model']))
 
 
