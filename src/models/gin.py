@@ -2,46 +2,84 @@ import torch
 from torch.nn import Linear
 import torch.nn.functional as F
 from torch_geometric.nn import MLP, GINConv, global_add_pool
+import torch
+import numpy as np
+from torch_geometric.nn import GCNConv, GatedGraphConv, global_mean_pool, global_add_pool, MLP
+import torch.nn.functional as F
+import torch.nn as nn
+from torch_geometric.utils import get_laplacian, to_torch_coo_tensor, dense_to_sparse
+import torch_geometric.utils as tg
+from tqdm import tqdm
 
 class GIN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
-        super().__init__()
-        self.conv1 = GINConv(MLP([in_channels, hidden_channels, hidden_channels], num_layers = 3))
-        self.conv2 = GINConv(MLP([hidden_channels, hidden_channels, hidden_channels], num_layers = 3), train_eps=False)
-        self.conv3 = GINConv(MLP([hidden_channels, hidden_channels, hidden_channels], num_layers = 3), train_eps=False)
-        self.lin1 = Linear(hidden_channels, hidden_channels)
-        self.lin2 = Linear(hidden_channels, out_channels)
+    '''
+    2 layer convolutional graph neural network
+    '''
 
-    def forward(self, batch, pool):
+    def __init__(self, in_channels, hidden_channels, num_layers, out_channels, num_lin=2, pool=False):
+        super().__init__()
+        self.layers = nn.ModuleList()
+        self.linlayers = nn.ModuleList()
+        for i in range(num_layers):
+            start = hidden_channels
+            end = hidden_channels
+            if i == 0:
+                start = in_channels
+            # self.layers.append(GCNConv(start, end, cached=False, normalize=True))
+            mlp = MLP([start, start, end], num_layers=num_layers)
+            self.layers.append(GINConv(mlp))
+        for i in range(num_lin):
+            start = hidden_channels
+            end = hidden_channels
+            if i == 0:
+                if pool:
+                    start = (hidden_channels * (num_layers))
+                else:
+                    start = hidden_channels
+            if i == num_lin - 1:
+                end = out_channels
+            self.linlayers.append(MLP(in_channels=start, hidden_channels=start, out_channels=end, num_layers=8))
+
+        self.pool = pool
+
+    def forward(self, batch):
         x = batch.x
+        x = x.to(torch.float32)
         edge_index = batch.edge_index
         batch = batch.batch
-        # Node embeddings
-        if pool:
-            h1 = self.conv1(x, edge_index).relu()
-            h2 = self.conv2(h1, edge_index).relu()
-            h3 = self.conv3(h2, edge_index)
-
-            h1 = global_add_pool(h1, batch)
-            h2 = global_add_pool(h2, batch)
-            h3 = global_add_pool(h3, batch)
-
-            h = torch.cat((h1, h2, h3), dim=1)
-
+        
+        # Graph Level Network
+        if self.pool:
+            h = []
+            for i in range(len(self.layers)):
+                if i == 0:
+                    h.append(self.layers[i](x, edge_index))
+                    if i != len(self.layers) - 1:
+                        h[i] = nn.functional.relu(h[i])
+                else:
+                    h.append(self.layers[i](h[-1], edge_index))
+                    if i != len(self.layers) - 1:
+                        h[i] = nn.functional.relu(h[i])
+            h = [global_add_pool(i, batch) for i in h]
+            h = torch.cat(h, dim=1)
             # Classifier
-            h = self.lin1(h)
-            h = h.relu()
-            h = F.dropout(h, p=0.5, training=self.training)
-            h = self.lin2(h)
-
+            for i in range(len(self.linlayers)):
+                h = self.linlayers[i](h)
+                if i != len(self.linlayers) - 1:
+                    h = nn.functional.relu(h)
+            # Dropout (uncomment if needed)
+            # h = F.dropout(h, p=0.5, training=self.training)
             return h
-        else:
-            x = self.conv1(x, edge_index).relu()
-            x = self.conv2(x, edge_index).relu()
-            x = self.conv3(x, edge_index)
 
-            h = self.lin1(x)
-            h = h.relu()
-            h = F.dropout(h, p=0.5, training=self.training)
-            h = F.log_softmax(self.lin2(h))
-            return h
+        # Node level network
+        for i in range(len(self.layers)):
+            x = self.layers[i](x, edge_index)
+            if i != len(self.layers) - 1:
+                x = nn.functional.relu(x)
+
+        for i in range(len(self.linlayers)):
+            x = self.linlayers[i](x)
+            if i != len(self.linlayers) - 1:
+                x = nn.functional.relu(x)
+        
+        return x

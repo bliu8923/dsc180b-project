@@ -2,16 +2,84 @@ import torch
 from torch_geometric.nn import GATConv
 import torch.nn.functional as F
 
-class GAT(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, heads=8):
-        super().__init__()
-        self.conv1 = GATConv(in_channels, hidden_channels, heads, dropout=0.6)
-        self.conv2 = GATConv(hidden_channels * heads, out_channels, 1,
-                             concat=False, dropout=0.6)
 
-    def forward(self, x, edge_index):
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = F.elu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.conv2(x, edge_index)
-        return x
+import torch
+import numpy as np
+from torch_geometric.nn import GCNConv, GatedGraphConv, global_mean_pool, global_add_pool, MLP
+import torch.nn.functional as F
+import torch.nn as nn
+from torch_geometric.utils import get_laplacian, to_torch_coo_tensor, dense_to_sparse
+import torch_geometric.utils as tg
+from tqdm import tqdm
+
+
+class GAT(torch.nn.Module):
+    '''
+    '''
+
+    def __init__(self, in_channels, hidden_channels, num_layers, out_channels, num_lin=2, pool=False, heads=4):
+        super().__init__()
+        self.layers = nn.ModuleList()
+        self.linlayers = nn.ModuleList()
+        for i in range(num_layers):
+            start = in_channels * heads
+            end = hidden_channels
+            if i == 0:
+                start = in_channels
+            self.layers.append(GATConv(in_channels=start, out_channels=end, num_layers=4, heads=heads, cached=True, normalize=True))
+        for i in range(num_lin):
+            start = hidden_channels
+            end = hidden_channels
+            if i == 0:
+                if pool:
+                    start = (hidden_channels * (num_layers)) * heads
+                else:
+                    start = hidden_channels * heads
+            if i == num_lin - 1:
+                end = out_channels
+            self.linlayers.append(MLP(in_channels=start, hidden_channels=start, out_channels=end, num_layers=8))
+
+        self.pool = pool
+
+    def forward(self, batch):
+        print(batch)
+        x = batch.x
+        x = x.to(torch.float32)
+        edge_index = batch.edge_index
+        batch = batch.batch
+        
+        # Graph Level Network
+        if self.pool:
+            h = []
+            for i in range(len(self.layers)):
+                if i == 0:
+                    h.append(self.layers[i](x, edge_index))
+                    if i != len(self.layers) - 1:
+                        h[i] = nn.functional.elu(h[i])
+                else:
+                    h.append(self.layers[i](h[-1], edge_index))
+                    if i != len(self.layers) - 1:
+                        h[i] = nn.functional.relu(h[i])
+            h = [global_add_pool(i, batch) for i in h]
+            h = torch.cat(h, dim=1)
+            # Classifier
+            for i in range(len(self.linlayers)):
+                h = self.linlayers[i](h)
+                if i != len(self.linlayers) - 1:
+                    h = nn.functional.relu(h)
+
+            # Dropout (uncomment if needed)
+            # h = F.dropout(h, p=0.5, training=self.training)
+            return h
+
+        # Node level network
+        for i in range(len(self.layers)):
+            x = self.layers[i](x, edge_index)
+            if i != len(self.layers) - 1:
+                x = nn.functional.elu(x)
+
+        for i in range(len(self.linlayers)):
+            x = self.linlayers[i](x)
+            if i != len(self.linlayers) - 1:
+                x = nn.functional.relu(x)
+

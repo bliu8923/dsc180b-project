@@ -7,7 +7,7 @@ def weighted_cross_entropy(pred, y):
     """
     # calculating label weights for weighted loss computation
     if len(y.shape) > 1:
-        true = y.argmax(1)
+        true = y[0]
     else:
         true = y
     V = true.size(0)
@@ -18,6 +18,8 @@ def weighted_cross_entropy(pred, y):
     cluster_sizes[torch.unique(true)] = label_count
     weight = (V - cluster_sizes).float() / V
     weight *= (cluster_sizes > 0).float()
+    
+    #print(V, label_count, cluster_sizes, weight, pred, pred.ndim)
     # multiclass
     if pred.ndim > 1:
         pred = F.log_softmax(pred, dim=-1)

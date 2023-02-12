@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from torch_geometric.nn import GCNConv, GatedGraphConv, global_mean_pool, global_add_pool
+from torch_geometric.nn import GCNConv, GatedGraphConv, global_mean_pool, global_add_pool, MLP
 import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.utils import get_laplacian, to_torch_coo_tensor, dense_to_sparse
@@ -32,7 +32,7 @@ class GCN(torch.nn.Module):
                     start = hidden_channels
             if i == num_lin - 1:
                 end = out_channels
-            self.linlayers.append(nn.Linear(start, end))
+            self.linlayers.append(MLP(in_channels=start, hidden_channels=start, out_channels=end, num_layers=8))
 
         self.attention = attention
         self.attention_layer = nn.Linear(out_channels, 1)
@@ -79,7 +79,7 @@ class GCN(torch.nn.Module):
             x = self.linlayers[i](x)
             if i != len(self.linlayers) - 1:
                 x = nn.functional.relu(x)
-
+                
         if self.attention:
             attention_weights = F.softmax(self.attention_layer(x), dim=1)
             x = (x * attention_weights)

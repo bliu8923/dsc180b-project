@@ -18,14 +18,15 @@ from src.encoder.add_edges import add_edges
 from src.encoder.lapPE import lap_pe
 from src.get_data import get_data
 from src.loss.weighted_ce import weighted_cross_entropy
+from src.loss.cross_entropy import multilabel_cross_entropy
 from src.models.ga1 import GraphAttention1
 from src.models.ga2 import GraphAttention2
 from src.models.gnn import GCN
 from src.train import train
 from src.test import test
 from src.test_lite import test_lite
-# from src.models.gin import GIN
-# from src.models.gat import GAT
+from src.models.gin import GIN
+from src.models.gat import GAT
 from src.models.gtn import GTN
 from src.models.san import SAN
 from torch import Tensor
@@ -37,7 +38,7 @@ from torch_geometric.graphgym.register import register_config
 from torch_geometric.loader import DataLoader
 from torch_geometric.logging import init_wandb, log
 from torch_geometric.nn import GCNConv, MessagePassing
-from torch_geometric.nn import GIN, GAT
+#from torch_geometric.nn import GIN, GAT
 from torch_geometric.transforms import AddLaplacianEigenvectorPE
 from torch_geometric.utils import train_test_split_edges, add_random_edge
 from tqdm import tqdm
@@ -58,6 +59,8 @@ else:
                         help='Model being used')
     parser.add_argument('--test', default=False, type=bool,
                         help='Test on smaller dataset for performance')
+    parser.add_argument('--hidden', default=88, type=int,
+                        help='(SAN Only) hidden dimensions')
 
     # Data Related
     parser.add_argument('--bz', default=32, type=int,
@@ -69,7 +72,7 @@ else:
     # feel free to add more augmentation/regularization related arguments
 
     # Other Choices & hyperparameters
-    parser.add_argument('--epoch', default=25, type=int,
+    parser.add_argument('--epoch', default=250, type=int,
                         help='number of epochs')
     # for loss
     parser.add_argument('--criterion', default='cross_entropy', type=str,
@@ -77,7 +80,7 @@ else:
     # for optimizer
     parser.add_argument('--optimizer', default='adam', type=str,
                         help='which optimizer to use')
-    parser.add_argument('--lr', default=0.05, type=float,
+    parser.add_argument('--lr', default=0.0005, type=float,
                         help='learning rate')
     parser.add_argument('--momentum', default=0.9, type=float,
                         help='momentum')
@@ -132,7 +135,7 @@ def main(args):
         # Set split datasets for task (Graph Task Splits Courtesy of GraphGPS)
         if args['encode'] == 'lap':
             print("Encoding with LapPE")
-            transformpe = AddLaplacianEigenvectorPE(args['encode_k'])
+            transformpe = AddLaplacianEigenvectorPE(args['encode_k'], attr_name=None)
             train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train', transform=transformpe)
             val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val', transform=transformpe)
             test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test', transform=transformpe)
@@ -141,8 +144,12 @@ def main(args):
             train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
             val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
             test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
-
-        criterion = weighted_cross_entropy
+        
+        #Select loss func
+        if args['criterion'] == 'cross_entropy':
+            criterion = multilabel_cross_entropy
+        elif args['criterion'] == 'weighted_cross_entropy':
+            criterion = weighted_cross_entropy
 
         if normalize_features:
             train_dataset.transform = T.NormalizeFeatures()
@@ -159,6 +166,8 @@ def main(args):
         traindata, train_edge = add_edges(train_dataset, args['add_edges'])
         valdata, val_edge = add_edges(val_dataset, args['add_edges'])
         testdata, test_edge = add_edges(test_dataset, args['add_edges'])
+        
+        print(traindata.data)
 
         # Dataloaders
         train_loader = DataLoader(traindata, args['bz'], True)
@@ -177,13 +186,13 @@ def main(args):
         modeltypes = ['gcn', 'gin', 'gan', 'san']
         '''Trains and tests the model type given (defaults to all models)'''
         if modeltype == 'gcn':
-            model = GCN(in_channels, in_channels, 8, out_channels, attention=False, pool=pool)
+            model = GCN(in_channels, in_channels, 8, out_channels, pool=pool)
         elif modeltype == 'gin':
-            model = GIN(in_channels, in_channels, 8, out_channels)
-        elif modeltype == 'gan':
-            model = GAT(in_channels, in_channels, 8, out_channels)
+            model = GIN(in_channels, in_channels, 8, out_channels, pool=pool)
+        elif modeltype == 'gat':
+            model = GAT(in_channels, in_channels, 8, out_channels, pool=pool)
         elif modeltype == 'san':
-            model = SAN(in_channels, in_channels, 4, out_channels, 4)
+            model = SAN(in_channels, traindata.data.edge_attr.shape[-1], args['hidden'], 4, out_channels, 4, pool=pool)
         elif modeltype == 'gcn+a':
             model = GraphAttention1(in_channels, out_channels)
         elif modeltype == 'gcn+a2':
