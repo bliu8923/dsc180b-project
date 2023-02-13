@@ -21,6 +21,7 @@ RUN pip install torch-sparse -f https://data.pyg.org/whl/torch-1.13.0+cpu.html
 RUN pip install torch-cluster -f https://data.pyg.org/whl/torch-1.13.0+cpu.html
 RUN pip install torch-spline-conv -f https://data.pyg.org/whl/torch-1.13.0+cpu.html
 RUN pip install torch-geometric -f https://data.pyg.org/whl/torch-1.13.0+cpu.html
+RUN pip install tqdm
 RUN pip install pytorch-lightning
 RUN pip install yacs
 RUN pip install --upgrade torch-geometric

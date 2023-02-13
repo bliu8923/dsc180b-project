@@ -42,7 +42,6 @@ class GAT(torch.nn.Module):
         self.pool = pool
 
     def forward(self, batch):
-        print(batch)
         x = batch.x
         x = x.to(torch.float32)
         edge_index = batch.edge_index
@@ -82,4 +81,6 @@ class GAT(torch.nn.Module):
             x = self.linlayers[i](x)
             if i != len(self.linlayers) - 1:
                 x = nn.functional.relu(x)
+        
+        return x
 

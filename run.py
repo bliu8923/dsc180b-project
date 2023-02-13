@@ -115,15 +115,26 @@ else:
 
 def main(args):
     if args['test']:
-        normalize_features = False
+        print("Testing on Cora dataset, 20 epoch loss convergence test")
+        print("Note that accuracy values might be low, or models overfit, these tests are only for convergence and shortcutting")
+        modeltypes = ['gcn', 'gin', 'gan', 'san']
         dataset = Planetoid(root='test/testdata', name='Cora')
         in_channels = dataset.num_features
         out_channels = dataset.num_classes
-        print(test_lite(dataset, in_channels, in_channels, out_channels, modeltype='gcn'))
-        print(test_lite(dataset, in_channels, in_channels, out_channels, modeltype='gin'))
-        print(test_lite(dataset, in_channels, in_channels, out_channels, modeltype='gan'))
-        print(test_lite(dataset, in_channels, in_channels, out_channels, modeltype='san'))
+        for i in modeltypes:
+            print("Accuracy (train, test, val): " + str(test_lite(dataset, in_channels, in_channels, out_channels, modeltype=i)))           
+        print('Testing encoding (5 attr laplacian PE)')
+        print(dataset.data)
+        transform = T.AddLaplacianEigenvectorPE(5, attr_name=None)
+        dataset.data = transform(dataset.data)
+        print(dataset.data)
+        print('Testing encoding (adding 1xnum_edges dummy edges)')
+        cl_dataset = dataset.data.clone()
+        cl_dataset, added_edges = add_edges(cl_dataset, 1)
+        print(cl_dataset)
+        print(added_edges.shape)
         return
+    
     else:
         gc.collect()
         torch.cuda.empty_cache()
@@ -155,10 +166,7 @@ def main(args):
             train_dataset.transform = T.NormalizeFeatures()
             val_dataset.transform = T.NormalizeFeatures()
             test_dataset.transform = T.NormalizeFeatures()
-        if args['encode'] != 'none':
-            in_channels = train_dataset.num_features + args['encode_k']
-        else:
-            in_channels = train_dataset.num_features
+        in_channels = train_dataset.num_features
         out_channels = train_dataset.num_classes
 
         # Add dummy edges
@@ -216,7 +224,7 @@ def main(args):
         except:
             weights = None
 
-        '''
+        ''' USE WITH OUR OWN LAPPE
         # Encode data (LapPE)
         if args['encode'] == 'lap':
             print("Encoding data using LapPE")
@@ -243,13 +251,11 @@ def main(args):
             print("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(
                 trainacc) + ', val acc: ' + str(acc))
 
-        print("Test Acc: " + str(test(test_loader, metric)))
+        print("Test Acc: " + str(test(test_loader, metric, model, device)))
 
 
 if __name__ == '__main__':
     main(args)
-
-# feel free to add more arguments if necessary
 
 
 # %%

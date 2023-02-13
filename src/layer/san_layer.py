@@ -1,3 +1,5 @@
+# Courtesy of Long Range Graph Benchmarks (Dwivedi et. al, 2022) and https://github.com/vijaydwivedi75/lrgb
+
 import numpy as np
 import torch
 import torch.nn as nn

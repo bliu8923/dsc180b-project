@@ -20,8 +20,9 @@ class GCN(torch.nn.Module):
             end = hidden_channels
             if i == 0:
                 start = in_channels
-            #self.layers.append(GCNConv(start, end, cached=False, normalize=True))
-            self.layers.append(GatedGraphConv(end, 4, cached=True, normalize=True))
+            self.layers.append(GCNConv(start, end, cached=False, normalize=True))
+            #Uncomment below for gatedGCN, adaptation of LSTM
+            #self.layers.append(GatedGraphConv(end, 4, cached=True, normalize=True))
         for i in range(num_lin):
             start = hidden_channels
             end = hidden_channels

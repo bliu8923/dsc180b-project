@@ -27,15 +27,16 @@ class SAN(torch.nn.Module):
 
     def __init__(self, node_in, edge_in, hidden_channels, num_layers, out_channels, heads = 4, gamma = 0, num_lin=2, pool=False, san2 = True, full_graph=False):
         super().__init__()
+        self.enc = nn.ModuleList()
         self.layers = nn.ModuleList()
         self.linlayers = nn.ModuleList()
 
         fake_edge_emb = torch.nn.Embedding(1, hidden_channels)
 
         node_enc = LinearNodeEncoder(node_in, hidden_channels)
-        self.layers.append(node_enc)
+        self.enc.append(node_enc)
         edge_enc = LinearEdgeEncoder(edge_in, hidden_channels)
-        self.layers.append(edge_enc)
+        self.enc.append(edge_enc)
         for i in range(num_layers):
             start = hidden_channels
             end = hidden_channels
@@ -58,7 +59,6 @@ class SAN(torch.nn.Module):
         self.pool = pool
 
     def forward(self, batch):
-        
         # Graph Level Network
         if self.pool:
             h = []
@@ -84,6 +84,8 @@ class SAN(torch.nn.Module):
             return h
 
         # Node level network
+        for i in range(len(self.enc)):
+            batch = self.enc[i](batch)
         for i in range(len(self.layers)):
             if i == 0:
                 x = self.layers[i](batch)

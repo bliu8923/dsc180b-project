@@ -37,6 +37,8 @@ Different parameters can be run on the file as well.
 
 ```--gamma```: (SAN only) sparcity of attention, 0 indicates sparse attention while 1 indicates no bias
 
+```--hidden```: Hidden parameters, made after linearly encoding data
+
 Shortcut methods have been added:
 
 ```--add_edges```: ratio of edges to be created (fake, random connections between nodes)
