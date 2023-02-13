@@ -26,5 +26,4 @@ RUN pip install pytorch-lightning
 RUN pip install yacs
 RUN pip install --upgrade torch-geometric
 
-
-RUN echo 'here'
+CMD ["/bin/bash"]
