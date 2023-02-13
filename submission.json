@@ -1,4 +1,4 @@
 {
-  "dockerhub-id": "b6liu/q1-project",
-  "build-script": "python run.py"
+    "GitHub Repository": "https://github.com/bliu8923/dsc180b-project",
+    "DockerHub Repository": "https://hub.docker.com/repository/docker/b6liu/dsc180b/general"
 }

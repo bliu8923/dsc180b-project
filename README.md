@@ -6,11 +6,15 @@ on 2 different long range datasets.
 Network architectures can be found under src/models, and test data (Cora) can
 be found under the test directory.
 
-To test the model's performance on a small dataset, run:
+To test the model's performance on a small dataset, use the docker repo b6liu/dsc180b (cpu or gpu for tag) and run:
 ```azure
 python run.py --test True --bz (number)
 ```
-Run a smaller bz if seg faults occur, defaults to 32 for test.
+IF ON DSMLP: Run a smaller bz if GAN errors, defaults to 32 for test. Also, we recommend using
+16+ GB of ram as the networks tend to have large numbers of parameters (especially for GAN/SAN).
+
+We would also recommend a GPU for running these tests/benchmarks, in this case, you should pull
+the GPU docker image that has Cuda 11.7 support. (b6liu/dsc180b:gpu)
 
 Different parameters can be run on the file as well.
 

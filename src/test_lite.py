@@ -49,13 +49,13 @@ def test_lite(dataset, in_channels, hidden_channels, out_channels, epochs = 20, 
     modeltypes = ['gcn', 'gin', 'gan', 'san']
     '''Trains and tests the model type given (defaults to all models)'''
     if modeltype == 'gcn':
-        model = GCN(in_channels, hidden_channels, 8, out_channels)
+        model = GCN(in_channels, hidden_channels, 4, out_channels)
     elif modeltype == 'gin':
-        model = GIN(in_channels, hidden_channels, 8, out_channels)
+        model = GIN(in_channels, hidden_channels, 4, out_channels)
     elif modeltype == 'gan':
-        model = GAT(in_channels, hidden_channels, 8, out_channels)
+        model = GAT(in_channels, hidden_channels, 2, out_channels)
     elif modeltype == 'san':
-        model = SAN(in_channels, data.edge_index.shape[0], 2000, 8, out_channels, 4)
+        model = SAN(in_channels, data.edge_index.shape[0], 2000, 2, out_channels, 4)
     else:
         print("No model found")
         return None
