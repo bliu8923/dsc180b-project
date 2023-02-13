@@ -65,3 +65,13 @@ Thank you to Long Range Graph Benchmarks for the SAN implementation and datasets
   year={2022}
 }
 ```
+And to GraphGPS, for many loss functions, SAN, and encoders:
+```
+@article{rampasek2022GPS,
+  title={{Recipe for a General, Powerful, Scalable Graph Transformer}}, 
+  author={Ladislav Ramp\'{a}\v{s}ek and Mikhail Galkin and Vijay Prakash Dwivedi and Anh Tuan Luu and Guy Wolf and Dominique Beaini},
+  journal={Advances in Neural Information Processing Systems},
+  volume={35},
+  year={2022}
+}
+```
