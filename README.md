@@ -8,8 +8,9 @@ be found under the test directory.
 
 To test the model's performance on a small dataset, run:
 ```azure
-python run.py --test True
+python run.py --test True --bz (number)
 ```
+Run a smaller bz if seg faults occur, defaults to 32 for test.
 
 Different parameters can be run on the file as well.
 

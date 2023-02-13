@@ -38,11 +38,13 @@ from torch_geometric.transforms import AddLaplacianEigenvectorPE
 from torch_geometric.utils import train_test_split_edges, add_random_edge
 from tqdm import tqdm
 
-def test_lite(data, in_channels, hidden_channels, out_channels, epochs = 20, modeltype='all'):
+def test_lite(dataset, in_channels, hidden_channels, out_channels, epochs = 20, modeltype='all', bz=32):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    data = data[0].to(device)
-    data.edge_attr = torch.from_numpy(np.zeros_like((data.edge_index.shape[-1], 1))).to(device)
-    data.edge_attr = data.edge_attr.type(torch.float32)
+    data = dataset[0].to(device)
+    
+    train_loader = DataLoader(dataset, bz, True)
+    test_loader = DataLoader(dataset, bz)
+    
     print('Device: ' + str(device) + ', Model: ' + str(modeltype))
     modeltypes = ['gcn', 'gin', 'gan', 'san']
     '''Trains and tests the model type given (defaults to all models)'''
@@ -53,7 +55,7 @@ def test_lite(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
     elif modeltype == 'gan':
         model = GAT(in_channels, hidden_channels, 8, out_channels)
     elif modeltype == 'san':
-        model = SAN(in_channels, data.edge_attr.shape[-1], 2000, 8, out_channels, 4)
+        model = SAN(in_channels, data.edge_index.shape[0], 2000, 8, out_channels, 4)
     else:
         print("No model found")
         return None
@@ -68,33 +70,40 @@ def test_lite(data, in_channels, hidden_channels, out_channels, epochs = 20, mod
     criterion = weighted_cross_entropy
     
     losses = []
-
     for i in range(epochs):
-        tdata = data.clone()
-        model.train()
-        optimizer.zero_grad()
-        if type(model) == SAN:
-            out = model(tdata).x
-        else:
-            out = model(tdata)
-        if criterion == weighted_cross_entropy:
-            loss, pred = criterion(out[tdata.train_mask], tdata.y[tdata.train_mask])
-        else:
-            loss = criterion(out[tdata.train_mask], tdata.y[tdata.train_mask])
-        losses.append(loss.item())
-        loss.backward()
-        optimizer.step()
+        for data in train_loader:
+            data.edge_attr = torch.from_numpy(np.zeros_like((data.edge_index.shape[-1], 1))).to(device)
+            data.edge_attr = data.edge_attr.type(torch.float32)
+            tdata = data.clone()
+            tdata = tdata.to(device)
+            model.train()
+            optimizer.zero_grad()
+            if type(model) == SAN:
+                out = model(tdata).x
+            else:
+                out = model(tdata)
+            if criterion == weighted_cross_entropy:
+                loss, pred = criterion(out[tdata.train_mask], tdata.y[tdata.train_mask])
+            else:
+                loss = criterion(out[tdata.train_mask], tdata.y[tdata.train_mask])
+            losses.append(loss.item())
+            loss.backward()
+            optimizer.step()
     
     print("Loss values (Check for convergence): " + str(losses))
 
     model.eval()
-    if type(model) == SAN:
-        pred = model(data).x
-    else:
-        pred = model(data)
-    _, pred = torch.max(F.log_softmax(pred), 1)
-    accs = []
-    for mask in [data.train_mask, data.val_mask, data.test_mask]:
-        #Accuracy score
-        accs.append(accuracy_score(data.y[mask].cpu().tolist(), pred[mask].cpu().tolist()))
+    for data in test_loader:
+        data.edge_attr = torch.from_numpy(np.zeros_like((data.edge_index.shape[-1], 1))).to(device)
+        data.edge_attr = data.edge_attr.type(torch.float32)
+        data = data.to(device)
+        if type(model) == SAN:
+            pred = model(data).x
+        else:
+            pred = model(data)
+        _, pred = torch.max(F.log_softmax(pred), 1)
+        accs = []
+        for mask in [data.train_mask, data.val_mask, data.test_mask]:
+            #Accuracy score
+            accs.append(accuracy_score(data.y[mask].cpu().tolist(), pred[mask].cpu().tolist()))
     return accs
