@@ -41,4 +41,4 @@ def train(loader, val, model, optimizer, criterion, device, metric):
         elif metric == average_precision_score:
             pred = F.log_softmax(pred, dim=1)
         scores.append(metric(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
-    return np.mean(total_loss), np.mean(trainscores), np.mean(scores)
+    return np.mean(total_loss), np.mean(trainscores), np.mean(scores), model

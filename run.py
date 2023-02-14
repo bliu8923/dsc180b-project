@@ -2,10 +2,11 @@
 import argparse
 import gc
 import json
+import os
 import sys
 # SUPPRESSING WARNINGS FOR AP
 import warnings
-
+import time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -240,12 +241,31 @@ def main(args):
         elif args['metric'] == 'ap':
             metric = average_precision_score
 
+        best_acc = 0
+        dir = './results/'
+        resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) +  str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
+        path = os.path.join(dir,resultfile)
+        os.makedirs(path)
         for i in range(args['epoch']):
-            loss, trainacc, acc = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
+            loss, trainacc, acc, mod = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
+            if acc > best_acc:
+                try:
+                    torch.save(mod.state_dict(), path + 'best-model-parameters.pt')
+                except:
+                    f = resultfile + 'best-model-parameters.pt'
+                    f.getParentFile().mkdirs()
+                    torch.save(mod.state_dict(), resultfile + 'best-model-parameters.pt')
             print("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(
                 trainacc) + ', val acc: ' + str(acc))
+            with open(path + 'train.txt', 'a') as f:
+                f.write("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(
+                trainacc) + ', val acc: ' + str(acc) + "\n")
+
+        model.load_state_dict(torch.load(path + 'best-model-parameters.pt'))
 
         print("Test Acc: " + str(test(test_loader, metric, model, device)))
+        with open(path + 'test.txt', 'a') as f:
+            f.write("Test Acc: " + str(test(test_loader, metric, model, device)))
 
 
 if __name__ == '__main__':
