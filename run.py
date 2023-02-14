@@ -246,14 +246,14 @@ def main(args):
         resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) +  str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
         path = os.path.join(dir,resultfile)
         os.makedirs(path)
+        with open(path + 'train.txt', 'a') as f:
+            f.write(str(args) + '\n')
         for i in range(args['epoch']):
             loss, trainacc, acc, mod = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
             if acc > best_acc:
                 try:
                     torch.save(mod.state_dict(), path + 'best-model-parameters.pt')
                 except:
-                    f = resultfile + 'best-model-parameters.pt'
-                    f.getParentFile().mkdirs()
                     torch.save(mod.state_dict(), resultfile + 'best-model-parameters.pt')
             print("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(
                 trainacc) + ', val acc: ' + str(acc))
