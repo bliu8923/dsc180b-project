@@ -11,6 +11,7 @@ def train(loader, val, model, optimizer, criterion, device, metric):
     model.to(device)
     model.train()
     total_loss = []
+    val_loss = []
     trainscores = []
     scores = []
 
@@ -33,9 +34,11 @@ def train(loader, val, model, optimizer, criterion, device, metric):
         model.eval()
         data.to(device)
         pred = model(data)
+        vloss, pred_score = criterion(pred, data.y)
         if metric == f1_score:
             _, pred = torch.max(F.log_softmax(pred, dim=1), 1)
         elif metric == average_precision_score:
             pred = F.log_softmax(pred, dim=1)
+        val_loss.append(float(vloss))
         scores.append(metric(data.y.cpu().tolist(), pred.cpu().tolist(), average='macro'))
-    return np.mean(total_loss), np.mean(trainscores), np.mean(scores), model
+    return np.mean(total_loss), np.mean(trainscores), np.mean(val_loss), np.mean(scores), model

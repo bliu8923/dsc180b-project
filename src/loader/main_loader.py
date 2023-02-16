@@ -1,11 +1,13 @@
-import torch
 import os
-from torch_geometric.loader import DataLoader
-from torch_geometric.datasets import LRGBDataset
+import torch
 import torch_geometric.transforms as T
+from torch_geometric.datasets import LRGBDataset
+from torch_geometric.loader import DataLoader
 
 from src.encoder.add_edges import add_edges
 from src.loader.parse_off import parse_off
+
+
 def main_loader(args):
     if args['datatype'] == 'LRGB':
         train_dataset = LRGBDataset(root=args['path'], name=args['dataset'], split='train')

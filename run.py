@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 import argparse
-import os
-# SUPPRESSING WARNINGS FOR AP
-import warnings
-
 import gc
 import numpy as np
+import os
 import time
 import torch
 import torch_geometric.transforms as T
+# SUPPRESSING WARNINGS FOR AP
+import warnings
 from sklearn.metrics import f1_score, average_precision_score
 from sklearn.utils.class_weight import compute_class_weight
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.datasets import LRGBDataset
 from torch_geometric.datasets import Planetoid
 from torch_geometric.loader import DataLoader
@@ -18,6 +18,7 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.transforms import AddLaplacianEigenvectorPE
 
 from src.encoder.add_edges import add_edges
+from src.loader.main_loader import main_loader
 from src.loss.cross_entropy import multilabel_cross_entropy
 from src.loss.weighted_ce import weighted_cross_entropy
 from src.models.ga1 import GraphAttention1
@@ -29,7 +30,6 @@ from src.models.san import SAN
 from src.test import test
 from src.test_lite import test_lite
 from src.train import train
-from src.loader.main_loader import main_loader
 
 warnings.filterwarnings('ignore')
 
@@ -102,7 +102,7 @@ parser.add_argument('--partial', default=0, type=int,
 parser.add_argument('--space', default=0, type=int,
                     help='Spacial features (partial attention)')
 
-parser.add_argument('--scheduler', default=False, type=bool,
+parser.add_argument('--scheduler', default=True, type=bool,
                     help='Enable scheduler for plateau on accuracy')
 
 parser.add_argument('--datatype', default='LRGB', type=str,
@@ -218,6 +218,10 @@ def main(args):
         optimizer = torch.optim.Adam([
             dict(params=model.parameters(), weight_decay=args['weight_decay'], momentum=args['momentum'])
         ], lr=args['lr'])
+        if args['scheduler']:
+            scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=20)
+        else:
+            scheduler = None
 
         # Set accuracy metric
         if args['metric'] == 'macrof1':
@@ -225,7 +229,7 @@ def main(args):
         elif args['metric'] == 'ap':
             metric = average_precision_score
 
-        best_acc = 0
+        best_loss = 9999999
         dir = './results/'
         resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) + str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(
             time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
@@ -234,8 +238,10 @@ def main(args):
         with open(path + 'train.txt', 'a') as f:
             f.write(str(args) + '\n')
         for i in range(args['epoch']):
-            loss, trainacc, acc, mod = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
-            if acc > best_acc:
+            loss, trainacc, val_loss, acc, mod = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
+            if scheduler:
+                scheduler.step(val_loss)
+            if val_loss < best_loss:
                 try:
                     torch.save(mod.state_dict(), path + 'best-model-parameters.pt')
                 except:
