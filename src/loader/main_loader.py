@@ -43,17 +43,18 @@ def main_loader(args):
         train_dataset.transform = T.NormalizeFeatures()
         val_dataset.transform = T.NormalizeFeatures()
         test_dataset.transform = T.NormalizeFeatures()
-    if args['encode'] == 'lap':
-        transform = T.AddLaplacianEigenvectorPE(5, attr_name=None)
-        train_dataset = transform(train_dataset)
-        val_dataset = transform(val_dataset)
-        test_dataset = transform(test_dataset)
 
     # Add dummy edges
     print("Dummy edge ratio: " + str(args['add_edges']))
     traindata, train_edge = add_edges(train_dataset, args['add_edges'])
     valdata, val_edge = add_edges(val_dataset, args['add_edges'])
     testdata, test_edge = add_edges(test_dataset, args['add_edges'])
+
+    if args['encode'] == 'lap':
+        transform = T.AddLaplacianEigenvectorPE(args['encode_k'], attr_name=None)
+        traindata.data = transform(traindata.data)
+        valdata.data = transform(valdata.data)
+        testdata.data = transform(testdata.data)
 
     print(traindata.data)
 
