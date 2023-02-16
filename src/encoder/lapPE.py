@@ -1,6 +1,6 @@
 import torch
 import torch_geometric.utils as tg
-from tqdm import tqdm
+
 
 #from src.GraphGPS.graphgps.encoder.laplace_pos_encoder import LapPENodeEncoder as enc
 

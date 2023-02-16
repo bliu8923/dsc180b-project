@@ -1,6 +1,6 @@
 # Courtesy of GraphGPS, https://github.com/rampasek/GraphGPS
 import torch
-import torch.nn as nn
+
 
 class LinearNodeEncoder(torch.nn.Module):
     def __init__(self, input_channels, output_channels):

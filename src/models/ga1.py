@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch_geometric.nn as gnn
-from torch_geometric.nn import MessagePassing, GCNConv, global_mean_pool
-from torch_geometric.utils import add_self_loops, degree, coalesce
+from torch_geometric.nn import MessagePassing
+from torch_geometric.utils import add_self_loops, degree
+
+
 class GraphAttention1(MessagePassing):
     # random selection
     def __init__(self, in_channels, out_channels, p_keep=0.5):

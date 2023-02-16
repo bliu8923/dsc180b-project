@@ -1,10 +1,12 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from tqdm import tqdm
 from sklearn.metrics import f1_score, average_precision_score
+from tqdm import tqdm
 
 from src.models.san import SAN
+
+
 def test(test_loader, metric, model, device):
 
     model.eval()

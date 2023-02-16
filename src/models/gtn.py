@@ -1,6 +1,7 @@
 import torch
-from torch_geometric.nn import TransformerConv, LayerNorm, Sequential
-from torch.nn.functional import elu
+from torch_geometric.nn import TransformerConv, LayerNorm
+
+
 class GTN(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, heads=10):
         super().__init__()

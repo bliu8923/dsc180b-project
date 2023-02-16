@@ -1,20 +1,13 @@
 # Courtesy of Long Range Graph Benchmarks (Dwivedi et. al, 2022) and https://github.com/vijaydwivedi75/lrgb
 
 import torch
-import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_scatter import scatter
-import torch_geometric.graphgym.register as register
-from torch_geometric.utils import remove_self_loops
 from torch_geometric.nn import MLP
-from torch_geometric.graphgym.config import cfg
-from torch_geometric.graphgym.models.gnn import FeatureEncoder, GNNPreMP
-from torch_geometric.graphgym.register import register_network, register_head
 
-from src.layer.san_layer import SANLayer
-from src.layer.san2_layer import SAN2Layer
 from src.encoder.linEnc import LinearNodeEncoder, LinearEdgeEncoder
+from src.layer.san2_layer import SAN2Layer
+from src.layer.san_layer import SANLayer
+
 
 class SAN(torch.nn.Module):
     """Spectral Attention Network (SAN) Graph Transformer.

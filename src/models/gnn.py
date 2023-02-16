@@ -1,11 +1,8 @@
 import torch
-import numpy as np
-from torch_geometric.nn import GCNConv, GatedGraphConv, global_mean_pool, global_add_pool, MLP
-import torch.nn.functional as F
 import torch.nn as nn
-from torch_geometric.utils import get_laplacian, to_torch_coo_tensor, dense_to_sparse
-import torch_geometric.utils as tg
-from tqdm import tqdm
+import torch.nn.functional as F
+from torch_geometric.nn import GCNConv, global_add_pool, MLP
+
 
 class GCN(torch.nn.Module):
     '''

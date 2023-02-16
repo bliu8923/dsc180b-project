@@ -1,9 +1,12 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from tqdm import tqdm
 from sklearn.metrics import f1_score, average_precision_score
+from tqdm import tqdm
+
 from src.models.san import SAN
+
+
 def train(loader, val, model, optimizer, criterion, device, metric):
     model.to(device)
     model.train()

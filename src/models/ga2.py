@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch_geometric.nn as gnn
-from torch_geometric.nn import MessagePassing, GCNConv, global_mean_pool
-from torch_geometric.utils import add_self_loops, degree
+
 
 class GraphAttention2(nn.Module):
     #prioritized by dist

@@ -1,51 +1,36 @@
 #!/usr/bin/env python
 import argparse
-import gc
-import json
 import os
-import sys
 # SUPPRESSING WARNINGS FOR AP
 import warnings
-import time
+
+import gc
 import numpy as np
+import time
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch_geometric.transforms as T
 from sklearn.metrics import f1_score, average_precision_score
-from sklearn.model_selection import ShuffleSplit
 from sklearn.utils.class_weight import compute_class_weight
-from src.encoder.add_edges import add_edges
-from src.encoder.lapPE import lap_pe
-from src.get_data import get_data
-from src.loss.weighted_ce import weighted_cross_entropy
-from src.loss.cross_entropy import multilabel_cross_entropy
-from src.models.ga1 import GraphAttention1
-from src.models.ga2 import GraphAttention2
-from src.models.gnn import GCN
-from src.train import train
-from src.test import test
-from src.test_lite import test_lite
-from src.models.gin import GIN
-from src.models.gat import GAT
-from src.models.gtn import GTN
-from src.models.san import SAN
-from torch import Tensor
-from torch.nn import Linear, Parameter
 from torch_geometric.datasets import LRGBDataset
 from torch_geometric.datasets import Planetoid
-from torch_geometric.graphgym.loader import set_dataset_attr
-from torch_geometric.graphgym.register import register_config
 from torch_geometric.loader import DataLoader
-from torch_geometric.logging import init_wandb, log
-from torch_geometric.nn import GCNConv, MessagePassing
-#from torch_geometric.nn import GIN, GAT
+# from torch_geometric.nn import GIN, GAT
 from torch_geometric.transforms import AddLaplacianEigenvectorPE
-from torch_geometric.utils import train_test_split_edges, add_random_edge
-from tqdm import tqdm
+
+from src.encoder.add_edges import add_edges
+from src.loss.cross_entropy import multilabel_cross_entropy
+from src.loss.weighted_ce import weighted_cross_entropy
+from src.models.ga1 import GraphAttention1
+from src.models.ga2 import GraphAttention2
+from src.models.gat import GAT
+from src.models.gin import GIN
+from src.models.gnn import GCN
+from src.models.san import SAN
+from src.test import test
+from src.test_lite import test_lite
+from src.train import train
 
 warnings.filterwarnings('ignore')
-    
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--device_id', default=0, type=int,
@@ -105,7 +90,20 @@ parser.add_argument('--testsplit', default=0.2, type=float,
 parser.add_argument('--metric', default='macrof1', type=str,
                     help='accuracy metric')
 
+parser.add_argument('--dropout', default=0.0, type=float,
+                    help='dropout value')
+parser.add_argument('--k', default=0, type=int,
+                    help='KNN neighbors (partial attention)')
+parser.add_argument('--partial', default=0, type=int,
+                    help='partial layers')
+parser.add_argument('--space', default=0, type=int,
+                    help='Spacial features (partial attention)')
+
+parser.add_argument('--scheduler', default=False, type=bool,
+                    help='Enable scheduler for plateau on accuracy')
+
 args = vars(parser.parse_args())
+
 
 def main(args):
     if args['test']:
@@ -116,7 +114,7 @@ def main(args):
         in_channels = dataset.num_features
         out_channels = dataset.num_classes
         for i in modeltypes:
-            print("Accuracy (train, test, val): " + str(test_lite(dataset, in_channels, in_channels, out_channels, modeltype=i, bz=args['bz'])))           
+            print("Accuracy (train, test, val): " + str(test_lite(dataset, in_channels, in_channels, out_channels, modeltype=i, bz=args['bz'])))
         print('Testing encoding (5 attr laplacian PE)')
         print(dataset.data)
         transform = T.AddLaplacianEigenvectorPE(5, attr_name=None)
@@ -128,7 +126,7 @@ def main(args):
         print(cl_dataset)
         print(added_edges.shape)
         return
-    
+
     else:
         print(args)
         gc.collect()
@@ -150,8 +148,8 @@ def main(args):
             train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
             val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
             test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
-        
-        #Select loss func
+
+        # Select loss func
         if args['criterion'] == 'cross_entropy':
             criterion = multilabel_cross_entropy
         elif args['criterion'] == 'weighted_cross_entropy':
@@ -169,7 +167,7 @@ def main(args):
         traindata, train_edge = add_edges(train_dataset, args['add_edges'])
         valdata, val_edge = add_edges(val_dataset, args['add_edges'])
         testdata, test_edge = add_edges(test_dataset, args['add_edges'])
-        
+
         print(traindata.data)
 
         # Dataloaders
@@ -193,7 +191,7 @@ def main(args):
         elif modeltype == 'gin':
             model = GIN(in_channels, in_channels, 8, out_channels, pool=pool)
         elif modeltype == 'gat':
-            model = GAT(in_channels, in_channels, 8, out_channels, pool=pool)
+            model = GAT(in_channels, in_channels, 8, out_channels, pool=pool, dropout=args['dropout'], partial=args['partial'], k=args['k'], space=args['space'])
         elif modeltype == 'san':
             model = SAN(in_channels, traindata.data.edge_attr.shape[-1], args['hidden'], 4, out_channels, 4, pool=pool)
         elif modeltype == 'gcn+a':
@@ -243,8 +241,9 @@ def main(args):
 
         best_acc = 0
         dir = './results/'
-        resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) +  str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
-        path = os.path.join(dir,resultfile)
+        resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) + str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(
+            time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
+        path = os.path.join(dir, resultfile)
         os.makedirs(path)
         with open(path + 'train.txt', 'a') as f:
             f.write(str(args) + '\n')
@@ -259,7 +258,7 @@ def main(args):
                 trainacc) + ', val acc: ' + str(acc))
             with open(path + 'train.txt', 'a') as f:
                 f.write("Epoch " + str(i) + ': ' + modeltype + ' loss: ' + str(loss) + ', train acc: ' + str(
-                trainacc) + ', val acc: ' + str(acc) + "\n")
+                    trainacc) + ', val acc: ' + str(acc) + "\n")
 
         model.load_state_dict(torch.load(path + 'best-model-parameters.pt'))
 
@@ -270,6 +269,5 @@ def main(args):
 
 if __name__ == '__main__':
     main(args)
-
 
 # %%
