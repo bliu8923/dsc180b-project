@@ -13,10 +13,7 @@ def test(test_loader, metric, model, device):
     scores = []
     for data in tqdm(test_loader):
         data = data.to(device)
-        if type(model) == SAN:
-            pred = model(data).x
-        else:
-            pred = model(data)
+        pred = model(data)
         if metric == f1_score:
             _, pred = torch.max(F.log_softmax(pred, dim=1), 1)
         elif metric == average_precision_score:

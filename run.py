@@ -29,6 +29,7 @@ from src.models.san import SAN
 from src.test import test
 from src.test_lite import test_lite
 from src.train import train
+from src.loader.main_loader import main_loader
 
 warnings.filterwarnings('ignore')
 
@@ -76,6 +77,8 @@ parser.add_argument('--encode', default='none', type=str,
                     help='positional encoding')
 parser.add_argument('--encode_k', default=3, type=int,
                     help='number of positional encoding values to add')
+parser.add_argument('--norm_feat', default=False, type=bool,
+                    help='Normalize features')
 
 parser.add_argument('--task', default='node', type=str,
                     help='(node) (graph) classification')
@@ -101,6 +104,11 @@ parser.add_argument('--space', default=0, type=int,
 
 parser.add_argument('--scheduler', default=False, type=bool,
                     help='Enable scheduler for plateau on accuracy')
+
+parser.add_argument('--datatype', default='LRGB', type=str,
+                    help='Dataset type to use, LRGB or 3d')
+parser.add_argument('--path', default='data', type=str,
+                    help='main file branch for dataset')
 
 args = vars(parser.parse_args())
 
@@ -136,39 +144,11 @@ def main(args):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('Device: ' + str(device))
 
-        # Set split datasets for task (Graph Task Splits Courtesy of GraphGPS)
-        if args['encode'] == 'lap':
-            print("Encoding with LapPE")
-            transformpe = AddLaplacianEigenvectorPE(args['encode_k'], attr_name=None)
-            train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train', transform=transformpe)
-            val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val', transform=transformpe)
-            test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test', transform=transformpe)
-        else:
-            print("No encoding")
-            train_dataset = LRGBDataset(root='data', name=args['dataset'], split='train')
-            val_dataset = LRGBDataset(root='data', name=args['dataset'], split='val')
-            test_dataset = LRGBDataset(root='data', name=args['dataset'], split='test')
 
-        # Select loss func
-        if args['criterion'] == 'cross_entropy':
-            criterion = multilabel_cross_entropy
-        elif args['criterion'] == 'weighted_cross_entropy':
-            criterion = weighted_cross_entropy
+        traindata, valdata, testdata = main_loader(args)
 
-        if normalize_features:
-            train_dataset.transform = T.NormalizeFeatures()
-            val_dataset.transform = T.NormalizeFeatures()
-            test_dataset.transform = T.NormalizeFeatures()
-        in_channels = train_dataset.num_features
-        out_channels = train_dataset.num_classes
-
-        # Add dummy edges
-        print("Dummy edge ratio: " + str(args['add_edges']))
-        traindata, train_edge = add_edges(train_dataset, args['add_edges'])
-        valdata, val_edge = add_edges(val_dataset, args['add_edges'])
-        testdata, test_edge = add_edges(test_dataset, args['add_edges'])
-
-        print(traindata.data)
+        in_channels = traindata.num_features
+        out_channels = traindata.num_classes
 
         # Dataloaders
         train_loader = DataLoader(traindata, args['bz'], True)
@@ -181,6 +161,12 @@ def main(args):
             pool = True
         else:
             pool = False
+
+        # Select loss func
+        if args['criterion'] == 'cross_entropy':
+            criterion = multilabel_cross_entropy
+        elif args['criterion'] == 'weighted_cross_entropy':
+            criterion = weighted_cross_entropy
 
         # Set model type for testing
         modeltype = args['model']

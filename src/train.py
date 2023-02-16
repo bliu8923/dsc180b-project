@@ -18,10 +18,7 @@ def train(loader, val, model, optimizer, criterion, device, metric):
         model.train()
         data.to(device)
         optimizer.zero_grad()
-        if type(model) == SAN:
-            out = model(data).x
-        else:
-            out = model(data)
+        out = model(data)
         loss, pred_score = criterion(out, data.y)
         if metric == f1_score:
             _, pred = torch.max(F.log_softmax(out, dim=1), 1)
@@ -35,10 +32,7 @@ def train(loader, val, model, optimizer, criterion, device, metric):
     for data in tqdm(val):
         model.eval()
         data.to(device)
-        if type(model) == SAN:
-            pred = model(data).x
-        else:
-            pred = model(data)
+        pred = model(data)
         if metric == f1_score:
             _, pred = torch.max(F.log_softmax(pred, dim=1), 1)
         elif metric == average_precision_score:
