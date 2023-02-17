@@ -32,7 +32,13 @@ class GAT(torch.nn.Module):
             start = hidden_channels
             end = hidden_channels
             if i == 0:
-                start = hidden_channels
+                if partial == 0:
+                    if pool:
+                        start = (hidden_channels * (num_layers)) * heads
+                    else:
+                        start = hidden_channels * heads
+                else:
+                    start = hidden_channels
             if i == num_lin - 1:
                 end = out_channels
             self.linlayers.append(MLP(in_channels=start, hidden_channels=start, out_channels=end, num_layers=8))
