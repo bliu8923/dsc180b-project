@@ -1,6 +1,6 @@
 # Courtesy of GraphGPS, https://github.com/rampasek/GraphGPS
 import torch
-import torch.nn as nn
+
 
 class LinearNodeEncoder(torch.nn.Module):
     def __init__(self, input_channels, output_channels):
@@ -19,7 +19,7 @@ class LinearEdgeEncoder(torch.nn.Module):
         self.lin = torch.nn.Linear(input_channels, output_channels)
         
     def forward(self, batch):
-        batch.edge_attr = self.lin(batch.edge_attr)
+        batch.edge_attr = self.lin(batch.edge_attr.type(torch.float32))
         return batch
     
     

@@ -1,20 +1,13 @@
 # Courtesy of Long Range Graph Benchmarks (Dwivedi et. al, 2022) and https://github.com/vijaydwivedi75/lrgb
 
 import torch
-import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_scatter import scatter
-import torch_geometric.graphgym.register as register
-from torch_geometric.utils import remove_self_loops
-from torch_geometric.nn import MLP
-from torch_geometric.graphgym.config import cfg
-from torch_geometric.graphgym.models.gnn import FeatureEncoder, GNNPreMP
-from torch_geometric.graphgym.register import register_network, register_head
+from torch_geometric.nn import MLP, global_add_pool
 
-from src.layer.san_layer import SANLayer
-from src.layer.san2_layer import SAN2Layer
 from src.encoder.linEnc import LinearNodeEncoder, LinearEdgeEncoder
+from src.layer.san2_layer import SAN2Layer
+from src.layer.san_layer import SANLayer
+
 
 class SAN(torch.nn.Module):
     """Spectral Attention Network (SAN) Graph Transformer.
@@ -62,23 +55,21 @@ class SAN(torch.nn.Module):
         # Graph Level Network
         if self.pool:
             h = []
+            for i in range(len(self.enc)):
+                batch = self.enc[i](batch)
             for i in range(len(self.layers)):
                 if i == 0:
                     h.append(self.layers[i](batch))
                 else:
                     h.append(self.layers[i](h[-1]))
                 if i != len(self.layers) - 1:
-                    h[i] = nn.functional.relu(h[i])
-            h = [global_add_pool(i, batch) for i in h]
+                    h[i].x = nn.functional.relu(h[i].x)
+            h = [global_add_pool(i.x, batch.batch) for i in h]
             h = torch.cat(h, dim=1)
-            
-            '''
-            # Classifier
             for i in range(len(self.linlayers)):
                 h = self.linlayers[i](h)
                 if i != len(self.linlayers) - 1:
                     h = nn.functional.relu(h)
-            '''
             # Dropout (uncomment if needed)
             # h = F.dropout(h, p=0.5, training=self.training)
             return h
@@ -92,7 +83,13 @@ class SAN(torch.nn.Module):
             else:
                 x = self.layers[i](x)
             if i != len(self.layers) - 1:
-                batch.x = nn.functional.relu(batch.x)
-                
-        return batch
+                x.x = nn.functional.relu(x.x)
+        for i in range(len(self.linlayers)):
+            if i == 0:
+                x = self.linlayers[i](x.x)
+            else:
+                x = self.linlayers[i](x)
+            if i != len(self.linlayers) - 1:
+                x = nn.functional.relu(x)
+        return batch.x
 

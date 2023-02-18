@@ -1,42 +1,18 @@
 #!/usr/bin/env python
-import argparse
-import gc
-import json
-import sys
 # SUPPRESSING WARNINGS FOR AP
-import warnings
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch_geometric.transforms as T
-from sklearn.metrics import f1_score, average_precision_score, accuracy_score
-from sklearn.model_selection import ShuffleSplit
-from sklearn.utils.class_weight import compute_class_weight
-from src.encoder.add_edges import add_edges
-from src.encoder.lapPE import lap_pe
-from src.get_data import get_data
-from src.loss.weighted_ce import weighted_cross_entropy
-from src.loss.cross_entropy import multilabel_cross_entropy
-from src.models.ga1 import GraphAttention1
-from src.models.ga2 import GraphAttention2
-from src.models.gnn import GCN
-from src.models.gin import GIN
-from src.models.gat import GAT
-from src.models.san import SAN
-from torch import Tensor
-from torch.nn import Linear, Parameter
-from torch_geometric.datasets import LRGBDataset
-from torch_geometric.datasets import Planetoid
-from torch_geometric.graphgym.loader import set_dataset_attr
-from torch_geometric.graphgym.register import register_config
+from sklearn.metrics import accuracy_score
 from torch_geometric.loader import DataLoader
-from torch_geometric.logging import init_wandb, log
-from torch_geometric.nn import GCNConv, MessagePassing
-from torch_geometric.transforms import AddLaplacianEigenvectorPE
-from torch_geometric.utils import train_test_split_edges, add_random_edge
-from tqdm import tqdm
+
+from src.loss.weighted_ce import weighted_cross_entropy
+from src.models.gat import GAT
+from src.models.gin import GIN
+from src.models.gnn import GCN
+from src.models.san import SAN
+
 
 def test_lite(dataset, in_channels, hidden_channels, out_channels, epochs = 20, modeltype='all', bz=32):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

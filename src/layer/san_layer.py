@@ -8,6 +8,7 @@ from torch_scatter import scatter
 
 from src.utils import negate_edge_index
 
+
 class MultiHeadAttentionLayer(nn.Module):
     """Multi-Head Graph Attention Layer.
 
