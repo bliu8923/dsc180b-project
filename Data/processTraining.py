@@ -2,6 +2,8 @@ import os
 import re
 import json
 
+#Process the training log and generate data for plots/EDA/reports
+
 def make_dict(fp,model_name):
     l, train, val = ([], ) * 3
     testbench = 0
