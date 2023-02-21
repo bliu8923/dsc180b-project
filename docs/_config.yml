@@ -24,7 +24,7 @@ description: >- # this means to ignore newlines until "baseurl:"
   Webpage for the DSC180A-B capstone project: "Exploring Techniques for Addressing Long-Range Interactions in GNN"
 domain: .github.io       # if you want to force HTTPS, specify the domain without the http at the start, e.g. example.com
 baseurl: "/dsc180b-project" # the subpath of your site, e.g. /blog
-url: "https://bliu8923.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://brliu.com" # the base hostname & protocol for your site, e.g. http://example.com
 github_username: bliu8923
 paginate: 5
 permalink: pretty
