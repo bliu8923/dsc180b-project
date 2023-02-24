@@ -31,6 +31,8 @@ from src.test import test
 from src.test_lite import test_lite
 from src.train import train
 
+from src.loader.dataset.PSB import PSB
+
 warnings.filterwarnings('ignore')
 
 parser = argparse.ArgumentParser()
@@ -147,13 +149,16 @@ def main(args):
 
         traindata, valdata, testdata = main_loader(args)
 
+        print(traindata.data)
+        print(traindata)
+
         in_channels = traindata.num_features
         out_channels = traindata.num_classes
 
         # Dataloaders
-        train_loader = DataLoader(traindata, args['bz'], True)
-        val_loader = DataLoader(valdata, args['bz'])
-        test_loader = DataLoader(testdata, args['bz'])
+        train_loader = DataLoader(traindata, args['bz'], True, drop_last=True)
+        val_loader = DataLoader(valdata, args['bz'], drop_last=True)
+        test_loader = DataLoader(testdata, args['bz'], drop_last=True)
         print("Encoding finished")
 
         # Set pooling based on task
