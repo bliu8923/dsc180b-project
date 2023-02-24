@@ -15,9 +15,10 @@ from sklearn.preprocessing import LabelEncoder
 import torch_geometric.transforms as T
 
 class PSB(InMemoryDataset):
-    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, split='train'):
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, split='train', edge_add=1):
+        self.edgeadd = edge_add
         super().__init__(root, transform=None, pre_transform=None, pre_filter=None)
-        self.data, self.slices = torch.load(root + '/psb/processed/' + split + '.pt')
+        self.data, self.slices = torch.load(root + '/psb/processed' + str(self.edgeadd) + '/' + split + '.pt')
 
     @property
     def raw_file_names(self):
@@ -25,11 +26,11 @@ class PSB(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return ['./data/psb/processed/train.pt', './data/psb/processed/val.pt', './data/psb/processed/test.pt']
+        return ['./data/psb/processed' + str(self.edgeadd) + '/train.pt', './data/psb/processed' + str(self.edgeadd) + '/val.pt', './data/psb/processed' + str(self.edgeadd) + '/test.pt']
 
     @property
     def processed_paths(self):
-        return ['./data/psb/processed/']
+        return ['./data/psb/processed' + str(self.edgeadd) + '/']
 
     '''
     def download(self):
@@ -94,6 +95,11 @@ class PSB(InMemoryDataset):
                 vertices.append(vertex)
             vertices = torch.tensor(vertices)
 
+            pos = torch.tensor(vertices, dtype=torch.float)
+            graph = Data(x=vertices, pos=pos)
+            knn_edge = T.KNNGraph(k=self.edgeadd, cosine=False, force_undirected=True)
+            graph = knn_edge(graph)
+            '''
             # Read the faces and build the edges
             edges = []
             for i in range(num_faces):
@@ -102,7 +108,8 @@ class PSB(InMemoryDataset):
                     edge = (face[j], face[(j + 1) % len(face)])
                     edges.append(edge)
             edges = torch.tensor(edges, dtype=torch.long)
-
+            graph = Data(x=vertices, edge_index=edges.transpose(0,1), pos=pos)
+            '''
             # Pad and trim to match dimensionality
             # num_nodes = max(edges.max().item() + 1, vertices.size(0))
             # new_x = torch.zeros((num_nodes, vertices.size(1)))
@@ -112,9 +119,7 @@ class PSB(InMemoryDataset):
             # pos = []
             # for i in range(num_vertices):
             #    pos.append([float(x) for x in f.readline().split()])
-            pos = torch.tensor(vertices, dtype=torch.float)
-
-            return Data(x=vertices, edge_index=edges.transpose(0, 1), pos=pos)
+            return graph
 
     def process(self):
         os.mkdir(self.processed_paths[0])
@@ -147,13 +152,16 @@ class PSB(InMemoryDataset):
                             file_label = le.transform([out_dict[file_index]])
                             #file_label_enc = np.zeros(len(ulab))
                             #file_label_enc[file_label] = 1
-                            #graph.y = torch.from_numpy(file_label_enc)
+                            #graph.y = torch.from_numpy(file_label_enc).long()
                             graph.y = torch.tensor(file_label[0])
                             # add edge_attr
                             dist_transform = T.Distance()
                             graph = dist_transform(graph)
+                            if self.pre_transform is not None:
+                                graph = self.pre_transform(graph)
                             # graph = knn_transform(graph)
                             graphs.append(graph)
                 data, slices = self.collate(graphs)
+                data.y = F.one_hot(data.y)
                 torch.save((data, slices), self.processed_paths[0] + fp.split('/')[-1].split('.')[0] + '.pt')
                 print("Saved to "+ self.processed_paths[0] + fp.split('/')[-1].split('.')[0] + '.pt')

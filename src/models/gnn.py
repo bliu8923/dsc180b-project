@@ -8,7 +8,7 @@ class GCN(torch.nn.Module):
     '''
     2 layer convolutional graph neural network
     '''
-    def __init__(self, in_channels, hidden_channels, num_layers, out_channels, attention=False, num_lin=2, pool=False):
+    def __init__(self, in_channels, hidden_channels, num_layers, out_channels, attention=False, num_lin=2, pool=False, gated=False):
         super().__init__()
         self.layers = nn.ModuleList()
         self.linlayers = nn.ModuleList()
@@ -17,9 +17,10 @@ class GCN(torch.nn.Module):
             end = hidden_channels
             if i == 0:
                 start = in_channels
-            self.layers.append(GCNConv(start, end, cached=False, normalize=True))
-            #Uncomment below for gatedGCN, adaptation of LSTM
-            #self.layers.append(GatedGraphConv(end, 4, cached=True, normalize=True))
+            if gated:
+                self.layers.append(GatedGraphConv(start, end, cached=True, normalize=True))
+            else:
+                self.layers.append(GCNConv(start, end, cached=False, normalize=True))
         for i in range(num_lin):
             start = hidden_channels
             end = hidden_channels

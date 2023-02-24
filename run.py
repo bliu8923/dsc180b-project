@@ -8,7 +8,7 @@ import torch
 import torch_geometric.transforms as T
 # SUPPRESSING WARNINGS FOR AP
 import warnings
-from sklearn.metrics import f1_score, average_precision_score
+from sklearn.metrics import f1_score, average_precision_score, precision_recall_curve
 from sklearn.utils.class_weight import compute_class_weight
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.datasets import LRGBDataset
@@ -179,6 +179,8 @@ def main(args):
         '''Trains and tests the model type given (defaults to all models)'''
         if modeltype == 'gcn':
             model = GCN(in_channels, in_channels, 8, out_channels, pool=pool)
+        elif modeltype == 'gatedgcn':
+            model = GCN(in_channels, in_channels, 8, out_channels, pool=pool, gated=True)
         elif modeltype == 'gin':
             model = GIN(in_channels, in_channels, 8, out_channels, pool=pool)
         elif modeltype == 'gat':
@@ -233,8 +235,10 @@ def main(args):
             metric = f1_score
         elif args['metric'] == 'ap':
             metric = average_precision_score
+        elif args['metric'] == 'prcurve':
+            metric = precision_recall_curve
 
-        best_loss = 9999999
+        best_loss = None
         dir = './results/'
         resultfile = modeltype + '/' + str(time.localtime(time.time()).tm_mon) + str(time.localtime(time.time()).tm_mday) + str(time.localtime(time.time()).tm_hour) + str(
             time.localtime(time.time()).tm_min) + str(time.localtime(time.time()).tm_sec) + '/'
@@ -242,11 +246,12 @@ def main(args):
         os.makedirs(path)
         with open(path + 'train.txt', 'a') as f:
             f.write(str(args) + '\n')
+        starttime = time.time()
         for i in range(args['epoch']):
             loss, trainacc, val_loss, acc, mod = train(train_loader, val_loader, model, optimizer, criterion, device, metric)
             if scheduler:
                 scheduler.step(val_loss)
-            if val_loss < best_loss:
+            if best_loss is None or val_loss < best_loss:
                 try:
                     torch.save(mod.state_dict(), path + 'best-model-parameters.pt')
                 except:
@@ -258,7 +263,8 @@ def main(args):
                     trainacc) + ', val acc: ' + str(acc) + "\n")
 
         model.load_state_dict(torch.load(path + 'best-model-parameters.pt'))
-
+        with open(path + 'train.txt', 'a') as f:
+            f.write("Training took " + str(time.time() - starttime) + ' seconds')
         print("Test Acc: " + str(test(test_loader, metric, model, device)))
         with open(path + 'test.txt', 'a') as f:
             f.write("Test Acc: " + str(test(test_loader, metric, model, device)))

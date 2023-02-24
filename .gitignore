@@ -131,7 +131,6 @@ venv.bak/
 /site
 /data
 /test
-/notebooks
 /results
 # mypy
 .mypy_cache/
