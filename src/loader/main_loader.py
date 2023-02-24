@@ -1,6 +1,7 @@
 import os
 import torch
 import torch_geometric.transforms as T
+import numpy as np
 from torch_geometric.datasets import LRGBDataset
 from torch_geometric.loader import DataLoader
 
@@ -11,6 +12,7 @@ from src.loader.parse_off import parse_off
 def main_loader(args):
     if args['datatype'] == 'LRGB':
         train_dataset = LRGBDataset(root=args['path'], name=args['dataset'], split='train')
+        train_dataset.data.edge_weight = torch.from_numpy(np.ones(train_dataset.data.edge_attr.shape[0]))
         val_dataset = LRGBDataset(root=args['path'], name=args['dataset'], split='val')
         test_dataset = LRGBDataset(root=args['path'], name=args['dataset'], split='test')
     else:
@@ -38,7 +40,6 @@ def main_loader(args):
         test_size = len(graphs) - train_size - val_size
         train_dataset, valtest_set = torch.utils.data.random_split(graphs, [train_size, test_size+val_size])
         val_dataset, test_dataset = torch.utils.data.random_split(valtest_set, [val_size, test_size])
-
     if args['norm_feat']:
         train_dataset.transform = T.NormalizeFeatures()
         val_dataset.transform = T.NormalizeFeatures()
@@ -52,6 +53,11 @@ def main_loader(args):
 
     if args['encode'] == 'lap':
         transform = T.AddLaplacianEigenvectorPE(args['encode_k'], attr_name=None)
+        traindata.data = transform(traindata.data)
+        valdata.data = transform(valdata.data)
+        testdata.data = transform(testdata.data)
+    if args['encode'] == 'walk':
+        transform = T.AddRandomWalkPE(args['encode_k'], attr_name=None)
         traindata.data = transform(traindata.data)
         valdata.data = transform(valdata.data)
         testdata.data = transform(testdata.data)

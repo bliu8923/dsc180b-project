@@ -53,7 +53,7 @@ parser.add_argument('--dataset', default='PascalVOC-SP', type=str,
                     help='Dataset to use (from Long Range Graph Benchmarks)')
 
 # Other Choices & hyperparameters
-parser.add_argument('--epoch', default=250, type=int,
+parser.add_argument('--epoch', default=500, type=int,
                     help='number of epochs')
 # for loss
 parser.add_argument('--criterion', default='cross_entropy', type=str,
