@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, global_add_pool, MLP
+from torch_geometric.nn import GCNConv, GatedGraphConv, global_add_pool, MLP
 
 
 class GCN(torch.nn.Module):

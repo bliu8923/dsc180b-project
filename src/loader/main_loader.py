@@ -25,7 +25,6 @@ def main_loader(args):
         testdata, test_edge = add_edges(test_dataset, args['add_edges'])
 
     else:
-        knn = T.KNNGraph(k=args['add_edges'])
         #train_dataset = PSB(root=args['path'], split='train', edge_num=args['add_edges'])
         traindata = PSB(root=args['path'], split='train', edge_add=round(args['add_edges']))
         #train_dataset.data.edge_weight = torch.from_numpy(np.ones(train_dataset.edge_attr.shape[0]))

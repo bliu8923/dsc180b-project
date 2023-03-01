@@ -97,7 +97,7 @@ class PSB(InMemoryDataset):
 
             pos = torch.tensor(vertices, dtype=torch.float)
             graph = Data(x=vertices, pos=pos)
-            knn_edge = T.KNNGraph(k=self.edgeadd, cosine=False, force_undirected=True)
+            knn_edge = T.KNNGraph(k=1 + self.edgeadd, cosine=False, force_undirected=True)
             graph = knn_edge(graph)
             '''
             # Read the faces and build the edges
