@@ -1,18 +1,16 @@
 
-from torch_geometric.data import InMemoryDataset, Data, Dataset, DataLoader, download_url, extract_zip
 import os
 import re
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import shutil
 
-from torch_geometric.loader import DataLoader
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torch_geometric.transforms as T
+from sklearn.preprocessing import LabelEncoder
+from torch_geometric.data import InMemoryDataset, Data, download_url, extract_zip
 from tqdm import tqdm
 
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
-import torch_geometric.transforms as T
 
 class PSB(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None, split='train', edge_add=1):
@@ -32,15 +30,13 @@ class PSB(InMemoryDataset):
     def processed_paths(self):
         return ['./data/psb/processed' + str(self.edgeadd) + '/']
 
-    '''
     def download(self):
         shutil.rmtree(self.raw_dir)
-        path = download_url('https://www.dropbox.com/s/nu6rq4guv1uysep/psb_raw.zip?dl=0',\
+        path = download_url('https://dl.dropboxusercontent.com/s/nu6rq4guv1uysep/psb_raw.zip?dl=0',\
                             self.root + '/psb')
-        extract_zip(path, self.root+'/psb/raw')
-        os.rename(osp.join(self.root, 'psb/raw'))
+        extract_zip(path, self.root+'/psb')
         os.unlink(path)
-    '''
+
     def make_labels(self, file_path, skip=0):
         fp = file_path
         skip_lines = skip  # default=0
@@ -99,26 +95,6 @@ class PSB(InMemoryDataset):
             graph = Data(x=vertices, pos=pos)
             knn_edge = T.KNNGraph(k=1 + self.edgeadd, cosine=False, force_undirected=True)
             graph = knn_edge(graph)
-            '''
-            # Read the faces and build the edges
-            edges = []
-            for i in range(num_faces):
-                face = list(map(int, f.readline().strip().split(' ')[1:]))
-                for j in range(len(face)):
-                    edge = (face[j], face[(j + 1) % len(face)])
-                    edges.append(edge)
-            edges = torch.tensor(edges, dtype=torch.long)
-            graph = Data(x=vertices, edge_index=edges.transpose(0,1), pos=pos)
-            '''
-            # Pad and trim to match dimensionality
-            # num_nodes = max(edges.max().item() + 1, vertices.size(0))
-            # new_x = torch.zeros((num_nodes, vertices.size(1)))
-            # new_x[:vertices.size(0), :] = vertices
-
-            # creating positional matrix
-            # pos = []
-            # for i in range(num_vertices):
-            #    pos.append([float(x) for x in f.readline().split()])
             return graph
 
     def process(self):
@@ -150,6 +126,7 @@ class PSB(InMemoryDataset):
                             filepath = os.path.join(root_folder, filename)
                             graph = self.parse_off(filepath)
                             file_label = le.transform([out_dict[file_index]])
+                            #For one hot encoding, uncomment below
                             #file_label_enc = np.zeros(len(ulab))
                             #file_label_enc[file_label] = 1
                             #graph.y = torch.from_numpy(file_label_enc).long()

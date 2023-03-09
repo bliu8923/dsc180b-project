@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GINConv
-from torch_geometric.nn import GINConv
 from torch_geometric.nn import global_add_pool, MLP
 
 

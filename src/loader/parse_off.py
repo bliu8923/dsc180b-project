@@ -1,10 +1,6 @@
-import os
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
-import torch_geometric.nn as gnn
-from torch_geometric.data import Data, Dataset, DataLoader
+from torch_geometric.data import Data
 
 
 def parse_off_ex(file_path):
@@ -54,11 +50,3 @@ def parse_off(file_path):
         edges = torch.tensor(edges, dtype=torch.long)
 
         return Data(x=vertices, edge_index=edges)
-
-
-"""
-# To save and graph data object, use
-torch.save(...)
-# To load, use
-train_loader = torch.load(...)
-"""

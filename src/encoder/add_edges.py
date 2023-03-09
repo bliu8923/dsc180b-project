@@ -1,6 +1,8 @@
-import torch_geometric.utils as tg
 import numpy as np
 import torch
+import torch_geometric.utils as tg
+
+
 def add_edges(dataset, p = 0.5):
     try:
         dataset.data.edge_index, added_edges = tg.add_random_edge(dataset.data.edge_index, p)
