@@ -15,6 +15,25 @@ dataset and network to determine which are best for long range performance.
 
 Our website's main purpose is to visualize our datasets and our results, if you want to see more theoretical portions
 of our project (such as the math behind models and optimization techniques), please refer to our report.
+
+## Methodology
+
+For this project, we trained 5 different graph neural networks on 3 datasets and optimized each dataset/model differently to see which
+combination would run best. We manipulated data by randomly adding edges throughout the dataset's nodes to decrease average node distances,
+and added positional encodings given either by laplacian eigenvectors (LapPE) or by a random walk matrix (RWSE). We also added partial attention
+to certain models that supported it.
+
+![](public/encoding-example.png)
+<font size="3">
+<em>Visualization of the effects of encodings (Courtesy of GraphGPS)</em>
+</font>
+
+For each model, we defaulted to using weighted cross entropy as our loss function and Adam as our optimizer, with a learning rate of 0.0001 and
+weight decay of 0.9. We also had a scheduler to lower the learning rate when loss plateaued for 15 epochs. Each model was run with 8 layers (except for
+SAN, which only had 4 due to memory constraints) and a batch size of 32 (Princeton was 8 due to memory constraints). 
+
+We ran our models on a mix of hardware, either a Nvidia A100 or a Nvidia RTX 3090.
+
 ## Datasets
 
 Our models were benchmarked, and performance recorded, on 3 different datasets
@@ -22,12 +41,38 @@ with 2 different tasks.
 
 ### PascalSP-VOC (Node)
 
+![](public/pascal-example.png)
+<font size="3">
+<em>Example of Pascal-VOCSP image, and its subsequent conversion to graph form (Courtesy of LRGB)</em>
+</font>
+
+Based on the Pascal-VOC 2011 dataset, each image is passed through the SLIC algorithm to create superpixels,
+which are each categorized into one of the 21 classes in the original segmentation (20 classes of items, plus 1 for no 
+category). The goal of this task is to predict the class of a superpixel region based on 14 node features (12 RGB values,
+2-dim point in space representing center-of-mass for superpixel) and 2 edge features (average value of pixels across
+boundary, count of pixels on boundary).
+
+Created and sourced from the Long Range Graph Benchmark.
+
 ### Peptides-Functional (Graph)
+![](public/peptides-example.png)
+<font size="3">
+<em>Example of 3D peptide structure and it's SMILES graph form (Courtesy of LRGB)</em>
+</font>
+
+Based on the SATPdb dataset, 15,535 peptides were converted to graphs through molecular SMILES, with edge and node features
+coming from the Open Graph Benchmark feature extraction. Nodes are created from non-hydrogen atoms and edges are created 
+from the bonds between these atoms. It should be noted that multi dimensional positional data for these molecules is not
+encoded into these graphs whatsoever, and instead graphs prioritize 1D amino acid chains, meaning that the network needs to 
+learn its own positions for this dataset.
+
+Created and sourced from the Long Range Graph Benchmark.
 
 ### Princeton Shape Benchmark (Graph)
 
 The Princeton Shape Benchmark is a 3D object dataset, in which a model must learn to classify 3D objects based on their shape
-into one of many categories.
+into one of many categories. To form these 3D files as graphs, we used a k nearest neighbor method to create edges between the closest *n* neighbors of any
+node, and stored its position as features for each node to create a positional encoding.
 
 For this project, we used the "coarse-2" class split, which splits the 3D objects into 7 different classes.
 Each object in each class can either be the entire object (i.e. a car, a human) or partial components of something in that 
@@ -46,7 +91,7 @@ class (i.e. a wheel, a leaf).
 #### Class 1: Vehicles
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 135deg" alt="Example 'vehicle' from Princeton Shape Benchmark" src="public/models/m1247.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 225deg" alt="Example 'vehicle2' from Princeton Shape Benchmark" src="public/models/m1551.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 225deg" alt="Example 'vehicle2' from Princeton Shape Benchmark" src="public/models/m1551.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
 
 All types of vehicles made it into this dataset, as well as many common vehicle components. All the vehicle data was very clear,
@@ -111,6 +156,8 @@ on the graph created by the model, and ultimately leave our algorithm confused w
 <model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m871.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 
+The furniture class includes some more basic household objects and furniture, all of which is well cleaned and easily recognizable.
+
 #### Class 6: Plant
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m1002.glb" camera-controls touch-action="pan-x">
@@ -118,12 +165,19 @@ on the graph created by the model, and ultimately leave our algorithm confused w
 <model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m1080.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 
+The plant class goes from household potted plants to full grown trees, all of which have very clean geometry. There were also parts of plants, such as leaves
+and stems. In general, the plants are all easily recognizable and their models are cleaned well.
+
 #### Class 7: Miscellaneous
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 45deg" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m575.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 <model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 135deg" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m518.glb" camera-controls touch-action="pan-x">
 </model-viewer>
+
+This class includes a variety of different models, most of which could go into their own class. Among the models were a lot of faces and silhouettes, as well as multiple
+countries modelled in 3D. The models in this class were cleaned well, but the diversity of objects means that this class would be extremely
+hard to consistently predict correctly. 
 
 ## Results
 
@@ -134,3 +188,6 @@ We used 5 different models, and 3 different optimizations on each of them (mixin
 ## Visualizations
 
 ## Conclusion
+
+## References
+
