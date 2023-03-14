@@ -221,6 +221,8 @@ hard to consistently predict correctly.
 
 ## Results and Findings
 
+Detailed tables of results can be found in the [appendix](./appendix): 
+
 For all datasets, the best model was SAN, with either LapPE or RWSE applied and occasionally edges added.
 
 - Most models, except for PSB, performed best without the added edges. That means that, in order for the models to learn and generalize well on ALL data (not just training data), 
@@ -243,7 +245,7 @@ to adding encoding or transformers separately.
 
 ## Visualizations
 
-[//]: Accuracy, Loss over epoch (selectable for each dataset)
+[//]: Accuracy, Loss over epoch (selectable for each dataset) (courtesy of d3 graph gallery)
 Select a dataset, model, techniques, and metric to visualize!
 
 <!-- Load d3.js -->
@@ -556,7 +558,7 @@ d3.json("public/results.json").then( function(data) {
 </script>
 
 
-[//]: Scatter plot performance over time (1 per dataset)
+[//]: Scatter plot performance over time (1 per dataset) (Courtesy of d3 graph gallery)
 
 <!-- Create a div where the graph will take place -->
 <div id="my_dataviz_2"></div>
@@ -649,7 +651,7 @@ d3.csv("public/timeresult.csv", rowConverter).then( function(data) {
     var mousemove = function(event, d) {
         console.log(d)
         Tooltip
-          .html("Model " + d.model + " ran on " + d.dataset + " in " + Math.round((d.time + Number.EPSILON) * 1000) / 1000 + " seconds and reached " + Math.round((d.test + Number.EPSILON) * 1000) / 1000 + " accuracy")
+          .html("Model " + d.model + " ran on " + d.dataset + " in " + Math.round((d.time + Number.EPSILON) * 1000) / 1000 + " seconds and reached " + Math.round((d.test + Number.EPSILON) * 1000) / 1000 + " accuracy <br> Techs: " + d.techs)
           .style("left", (d3.pointer(event)[0]+70) + "px")
           .style("top", (d3.pointer(event)[1]) + "px")
     }
@@ -685,6 +687,16 @@ d3.csv("public/timeresult.csv", rowConverter).then( function(data) {
       
       });
 </script>
+
+## Conclusion
+
+In conclusion, we have explored the effectiveness of various transformer-based approaches in improving the performance
+of graph neural networks. Our findings suggest that incorporating transformer-based approaches can lead to more efficient
+and scalable GNN models that can effectively capture long-range interactions in larger graphs. Our result shows that the
+addition of partial graph attention can significantly increase the model performance more than positional encoding and edge creation does.
+Combining positional encoding and/or edge creation with attention can further enhance the performance by capturing both local and global
+structural information. Moreover, the transformer-based approaches significantly reduce the training time required to achieve state-of-the-art performance.
+Future research could explore on the generalization capabilities of transformer-based GNNs to new and unseen graphs.
 
 ## References
 Dwivedi, Vijay Prakash and Rampášek, Ladislav and Galkin, Mikhail and Parviz, Ali and Wolf, Guy and Luu, Anh Tuan and Beaini, Dominique. [*Long Range Graph Benchmark*.](https://arxiv.org/abs/2206.08164) arXiv:2206.08164. Jan 16, 2023.
