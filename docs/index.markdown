@@ -14,7 +14,7 @@ on these long range tasks, introduce our own long range benchmark dataset, and u
 dataset and network to determine which are best for long range performance.
 
 Our website's main purpose is to visualize our datasets and our results, if you want to see more theoretical portions
-of our project (such as the math behind models and optimization techniques), please refer to our report.
+of our project (such as the math behind models and optimization techniques), please refer to our [report](./public/report.pdf).
 
 ## Methodology
 
@@ -23,7 +23,7 @@ combination would run best. We manipulated data by randomly **adding edges** thr
 and added positional encodings given either by **laplacian eigenvectors (LapPE)** or by a **random walk matrix (RWSE)**. We also added **partial attention**
 to certain models that supported it.
 
-For an extended methodology, refer to our report.
+For an extended methodology, refer to the [report](./public/report.pdf).
 
 ![](public/encoding-example.png)
 <font size="3">
@@ -144,7 +144,7 @@ one of the easier classes to predict, since there are clearer patterns in vehicl
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m259.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m77.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m77.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
 
 The animal class had plenty of variety that included land, sea, and air animals. The sheer number of different animals, including bugs, humans, housepets, 
@@ -158,7 +158,7 @@ Despite these shortcomings, the shapes in the class were well cleaned and intuit
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'household' from Princeton Shape Benchmark" src="public/models/m1729.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'household2' from Princeton Shape Benchmark" src="public/models/m1800.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'household2' from Princeton Shape Benchmark" src="public/models/m1800.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
 
 This was one of the most confusing classes of the dataset. The shapes above are intuitively "household" objects, but the object below?
@@ -179,7 +179,7 @@ would most likely capture the entirety of this class. For the purposes of this p
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 90deg" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m390.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 45deg" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m460.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 45deg" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m460.glb" camera-controls touch-action="pan-x" shadow-intensity="1">
 </model-viewer>
 
 The building class is extremely simple and most objects recognizable by humans as everyday buildings. The structure of many resembled typical houses, 
@@ -193,7 +193,7 @@ on the graph created by the model, and ultimately leave our algorithm confused w
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 45deg" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m797.glb" camera-controls touch-action="pan-x">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m871.glb" camera-controls touch-action="pan-x">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m871.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 
 The furniture class includes some more basic household objects and furniture, all of which is well cleaned and easily recognizable.
@@ -202,7 +202,7 @@ The furniture class includes some more basic household objects and furniture, al
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m1002.glb" camera-controls touch-action="pan-x">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m1080.glb" camera-controls touch-action="pan-x">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 0" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m1080.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 
 The plant class goes from household potted plants to full grown trees, all of which have very clean geometry. There were also parts of plants, such as leaves
@@ -212,7 +212,7 @@ and stems. In general, the plants are all easily recognizable and their models a
 
 <model-viewer interaction-prompt="none" style="width: 50%; float: left; background: white;" id="transform" orientation="0 90deg 45deg" alt="Example 'animal' from Princeton Shape Benchmark" src="public/models/m575.glb" camera-controls touch-action="pan-x">
 </model-viewer>
-<model-viewer interaction-prompt="none" style="margin-left: 50%; background: white;" id="transform" orientation="0 90deg 135deg" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m518.glb" camera-controls touch-action="pan-x">
+<model-viewer interaction-prompt="none" style="flex-grow: 1; background: white;" id="transform" orientation="0 90deg 135deg" alt="Example 'animal2' from Princeton Shape Benchmark" src="public/models/m518.glb" camera-controls touch-action="pan-x">
 </model-viewer>
 
 This class includes a variety of different models, most of which could go into their own class. Among the models were a lot of faces and silhouettes, as well as multiple
@@ -262,7 +262,7 @@ Select a dataset, model, techniques, and metric to visualize!
 
 // set the dimensions and margins of the graph
 const margin = {top: 30, right: 30, bottom: 30, left: 30},
-    width = 460 - margin.left - margin.right,
+    width = screen.width/2 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
