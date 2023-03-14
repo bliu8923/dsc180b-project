@@ -260,10 +260,17 @@ Select a dataset, model, techniques, and metric to visualize!
 
 <script>
 
+
+var margin = {top: 30, right: 30, bottom: 30, left: 30},
+        width = window.innerWidth - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+
 // set the dimensions and margins of the graph
-const margin = {top: 30, right: 30, bottom: 30, left: 30},
-    width = screen.width/2 - margin.left - margin.right,
-    height = 400 - margin.top - margin.bottom;
+console.log(window.innerWidth)
+if (window.innerWidth > 1000){
+        width = screen.width/2 - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+}
 
 // append the svg object to the body of the page
 const svg = d3.select("#my_dataviz")
