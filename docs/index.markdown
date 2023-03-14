@@ -19,20 +19,60 @@ of our project (such as the math behind models and optimization techniques), ple
 ## Methodology
 
 For this project, we trained 5 different graph neural networks on 3 datasets and optimized each dataset/model differently to see which
-combination would run best. We manipulated data by randomly adding edges throughout the dataset's nodes to decrease average node distances,
-and added positional encodings given either by laplacian eigenvectors (LapPE) or by a random walk matrix (RWSE). We also added partial attention
+combination would run best. We manipulated data by randomly **adding edges** throughout the dataset's nodes to decrease average node distances,
+and added positional encodings given either by **laplacian eigenvectors (LapPE)** or by a **random walk matrix (RWSE)**. We also added **partial attention**
 to certain models that supported it.
+
+For an extended methodology, refer to our report.
 
 ![](public/encoding-example.png)
 <font size="3">
 <em>Visualization of the effects of encodings (Courtesy of GraphGPS)</em>
 </font>
+<br>
+<font size="3.5">
+<table>
+  <tbody>
+    <tr>
+      <th align="center">Datasets</th>
+      <th align="center">Model Types</th>
+      <th align="center">Optimization Technique</th>
+    </tr>
+    <tr>
+      <td>
+        <ul>
+          <li>Pascal-VOCSP</li>
+          <li>Peptides-func</li>
+          <li>Princeton Shape</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Graph Convolutional Network (GCN)</li>
+          <li>Residual Gated Graph Convnet (GatedGCN)</li>
+          <li>Graph Isomorphic Network (GIN)</li>
+          <li>Graph Attention Network (GAT)</li>
+          <li>Spectral Attention Network (SAN)</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Edge Adding</li>
+          <li>Laplacian Positional Encoding (LapPE)</li>
+          <li>Random Walk Structural Encoding (RWSE)</li>
+          <li>Partial Attention</li>
+          <li>Distance Weighted Partial Attention</li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+</font>
+<font size="3">
+<em>Table 1: Datasets we run on, as well as the different model types and techniques we use.</em>
+</font>
+<br>
 
-For each model, we defaulted to using weighted cross entropy as our loss function and Adam as our optimizer, with a learning rate of 0.0001 and
-weight decay of 0.9. We also had a scheduler to lower the learning rate when loss plateaued for 15 epochs. Each model was run with 8 layers (except for
-SAN, which only had 4 due to memory constraints) and a batch size of 32 (Princeton was 8 due to memory constraints). 
-
-We ran our models on a mix of hardware, either a Nvidia A100 or a Nvidia RTX 3090.
 
 ## Datasets
 
@@ -179,53 +219,341 @@ This class includes a variety of different models, most of which could go into t
 countries modelled in 3D. The models in this class were cleaned well, but the diversity of objects means that this class would be extremely
 hard to consistently predict correctly. 
 
-## Results
+## Results and Findings
 
-We used 5 different models, and 3 different optimizations on each of them (mixing and matching).
+For all datasets, the best model was SAN, with either LapPE or RWSE applied and occasionally edges added.
 
-These tables display the test results of our models. *Italics* indicate the best train result (not listed here), 
-and **bold** indicates the best test result for that dataset.
+- Most models, except for PSB, performed best without the added edges. That means that, in order for the models to learn and generalize well on ALL data (not just training data), 
+adding edges is unnecessary and even harmful to the overall accuracy of the model. PSB edges were added through k nearest neighbors, so it is possible by doubling them (from 3 to 6)
+we were still underfitting the edge count for 3D shapes. 
 
-### PascalVOC-SP (Macro F1 Score)
+- SAN trained faster than previously cited (LRGB, GraphGPS), most likely due to advancements in GPU hardware. Training time was brought down from 60 hours in previous benchmarks to 2-3 hours in our benchmark, 
+while keeping metrics the same if not higher.
 
-| Modifier Type        | GCN    | GatedGCN | GIN    | GAT    | GAT (Partial) | SAN    |
-|----------------------|--------|----------|--------|--------|---------------|--------|
-| Baseline             | 0.0691 | 0.0885   | 0.1092 | 0.1462 | 0.0493        | 0.2006 |
-| Edge Adding          | 0.0510 | 0.0808   | 0.1058 | 0.1468 | 0.0493        | 0.1923 |
-| Laplacian PE         | 0.0787 | 0.0865   | 0.1112 | 0.1448 | 0.0493        | **0.2195** |
-| Random Walk SE       | 0.0799 | 0.0814   | 0.1124 | 0.1761 | 0.0493        | 0.2157 |
-| Laplacian PE + Edges | 0.0764 | 0.0843   | 0.1143 | 0.1376 | 0.0493        | *0.2156* |
-| RWSE + Edges         | 0.0758 | 0.0850   | 0.1115 | 0.1792 | 0.0493        | 0.2105 |
+- Laplacian encoding and Random Walk encoding take up time at the beginning of training, since the model needs to calculate
+laplacian matrices and eigenvalues before the training begins. This takes up more time the larger the dataset is, and took the longest
+on our PSB dataset.
 
-### Peptides-functional (Average Precision)
+- All models benefitted heavily from a transformer based model, more than just encoding or edge adding could do. PSB saw the biggest improvement just from GCN to SAN.
 
-| Modifier Type        | GCN    | GatedGCN | GIN    | GAT    | GAT (Partial) | SAN    |
-|----------------------|--------|----------|--------|--------|---------------|--------|
-| Baseline             | 0.4976 | 0.5166   | 0.5455 | 0.5245 | 0.4758        | 0.5745 |
-| Edge Adding          | 0.5214 | 0.5275   | 0.5540 | 0.5161 | 0.4609        | 0.5696 |
-| Laplacian PE         | 0.5326 | 0.5397   | 0.5643 | 0.5386 | 0.4784        | **0.6126** |
-| Random Walk SE       | 0.5211 | 0.5467   | 0.5689 | 0.5577 | 0.4860        | *0.5913* |
-| Laplacian PE + Edges | 0.5133 | 0.5291   | 0.5634 | 0.5455 | 0.4957        | 0.6066 |
-| RWSE + Edges         | 0.5241 | 0.4701   | 0.5641 | 0.5395 | 0.4943        | 0.6092 |
+- Partial with distance weighting seemed to hurt our results in all datasets, and edges/encodings needed to be added for distance weighting to become viable. Distance weighting did not work at all on Pascal.
 
-### Princeton Shape Benchmark (Average Precision)
-
-| Modifier Type        | GCN    | GatedGCN | GIN    | GAT    | GAT (Partial) | SAN    |
-|----------------------|--------|----------|--------|--------|---------------|--------|
-| Baseline             | 0.2228 | 0.1974   | 0.3440 | 0.2688 | 0.1649        | 0.3875 |
-| Edge Adding          | 0.1941 | 0.1429   | 0.2599 | 0.2123 | 0.1526        | 0.4270 |
-| Laplacian PE         | 0.3497 | 0.3843   | 0.3842 | 0.3472 | 0.2693        | *0.4268* |
-| Random Walk SE       | 0.3195 | 0.3921   | 0.3020 | 0.2951 | 0.2761        | 0.4415 |
-| Laplacian PE + Edges | 0.3834 | 0.3089   | 0.3768 | 0.3382 | 0.3079        | 0.4493 |
-| RWSE + Edges         | 0.3327 | 0.3358   | 0.3932 | 0.3357 | 0.3003        | **0.4629** |
+- Edge adding techniques did not individually improve model performance, but combining edge adding with other encoding techniques or transformers improved model performance compared
+to adding encoding or transformers separately.
 
 ## Visualizations
 
+[//]: Accuracy, Loss over epoch (selectable for each dataset)
+Select a dataset, model, techniques, and metric to visualize!
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v6.js"></script>
+
+<!-- Initialize a select button -->
+<select id="selectButton"></select>
+<select id="selectButton2"></select>
+<select id="selectButton3"></select>
+<select id="selectButton4"></select>
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+
+<script>
+
+// set the dimensions and margins of the graph
+const margin = {top: 30, right: 30, bottom: 30, left: 30},
+    width = 460 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+// append the svg object to the body of the page
+const svg = d3.select("#my_dataviz")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+
+
+    //Read the data
+d3.json("public/results.json").then( function(data) {
+
+    var defdata = data["GCN"]["pascal"]["base"]
+    
+    // List of groups (here I have one group per column)
+    const allGroup = ["GCN", "GatedGCN", "GIN", "GAT", "SAN"]
+    const allData = ["pascal", "peptides", "psb"]
+    const allTech = ["base", "edge", "edge+lap", "edge+walk", "walk", "lap"]
+    const allMet = ["loss", "train acc", "val acc"]
+    
+    var rearrangedData = defdata.loss.map(function(d,i) {
+      return {
+          loss:d,
+          epoch:Array.apply(null, Array(500)).map(function (_, i) {return i;})[i]
+      }; 
+    })
+    
+    console.log(rearrangedData)
+    
+    // add the options to the button
+    d3.select("#selectButton")
+      .selectAll('myOptions')
+     	.data(allGroup)
+      .enter()
+    	.append('option')
+      .text(function (d) { return d; }) // text showed in the menu
+      .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+    d3.select("#selectButton2")
+      .selectAll('myOptions')
+     	.data(allData)
+      .enter()
+    	.append('option')
+      .text(function (d) { return d; }) // text showed in the menu
+      .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+    d3.select("#selectButton3")
+          .selectAll('myOptions')
+            .data(allTech)
+          .enter()
+            .append('option')
+          .text(function (d) { return d; }) // text showed in the menu
+          .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+    d3.select("#selectButton4")
+          .selectAll('myOptions')
+            .data(allMet)
+          .enter()
+            .append('option')
+          .text(function (d) { return d; }) // text showed in the menu
+          .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+    // A color scale: one color for each group
+    const myColor = d3.scaleOrdinal()
+      .domain(allGroup)
+      .range(d3.schemeSet2);
+
+    // Add X axis --> it is a date format
+    const x = d3.scaleLinear()
+      .domain([0,500])
+      .range([ 0, width ]);
+    svg.append("g")
+      .attr("transform", `translate(0, ${height})`)
+      .call(d3.axisBottom(x));
+
+    // Add Y axis
+    const y = d3.scaleLinear()
+      .domain( [Math.min(...defdata.loss)-0.01,Math.max(...defdata.loss) + 0.1])
+      .range([ height, 0 ]);
+    
+    svg.append("g")
+      .attr("id", "y-axis")
+      .call(d3.axisLeft(y));
+      
+    // This allows to find the closest X index of the mouse:
+    var bisect = d3.bisector(function(d) { return d.epoch; }).left;
+    
+    // Create the circle that travels along the curve of chart
+    var focus = svg
+    .append('g')
+    .append('circle')
+      .style("fill", "none")
+      .attr("stroke", "black")
+      .attr('r', 8.5)
+      .style("opacity", 0)
+  
+
+    // Initialize line with group a
+    const line = svg
+      .append('g')
+      .append("path")
+        .datum(rearrangedData)
+        .attr("d", d3.line()
+          .x(function(d) { return x(+d.epoch) })
+          .y(function(d) { return y(+d.loss) })
+        )
+        .attr("stroke", "blue")
+        .style("stroke-width", 4)
+        .style("fill", "none")
+    
+    // Create the text that travels along the curve of chart
+    var focusText = svg
+    .append('g')
+    .append('text')
+      .style("opacity", 0)
+      .attr("text-anchor", "left")
+      .attr("alignment-baseline", "middle")
+      .attr("font", "SF Pro Text")
+      .attr("color", "gray")
+        
+    // Create a rect on top of the svg area: this rectangle recovers mouse position
+    svg
+    .append('rect')
+    .style("fill", "none")
+    .style("pointer-events", "all")
+    .attr('width', width)
+    .attr('height', height)
+    .on('mouseover', mouseover)
+    .on('mousemove', mousemove)
+    .on('mouseout', mouseout);
+    
+    // What happens when the mouse move -> show the annotations at the right positions.
+    function mouseover() {
+        focus.style("opacity", 1)
+        focusText.style("opacity",1)
+    }
+    
+    function mousemove() {
+        // recover coordinate we need
+        var x0 = x.invert(d3.pointer(event)[0]);
+        var i = bisect(rearrangedData, x0, 1);
+        selectedData = rearrangedData[i]
+        focus
+          .attr("cx", x(selectedData.epoch))
+          .attr("cy", y(selectedData.loss))
+        if (i > 250){
+            focusText
+              .html("epoch:" + selectedData.epoch + "  -  " + "loss:" + Math.round((selectedData.loss + Number.EPSILON) * 1000) / 1000)
+              .attr("x", x(selectedData.epoch)-225)
+              .attr("y", y(selectedData.loss)-50)
+        } else {
+            focusText
+              .html("epoch:" + selectedData.epoch + "  -  " + "loss:" + Math.round((selectedData.loss + Number.EPSILON) * 1000) / 1000)
+              .attr("x", x(selectedData.epoch)+10)
+              .attr("y", y(selectedData.loss)-50)
+        }
+    }
+    function mouseout() {
+        focus.style("opacity", 0)
+        focusText.style("opacity", 0)
+    }
+    
+    // A function that update the chart
+    function update(g1, g2, g3, g4) {
+    
+      if (g4 == "train acc"){
+          g4 = "tacc";
+      }
+      if (g4 == "val acc"){
+          g4 = "vacc";
+      }
+    
+      var defdata = data[g1][g2][g3]
+
+      // Create new data with the selection?
+      var rearrangedData = defdata[g4].map(function(d,i) {
+          return {
+              loss:d,
+              epoch:Array.apply(null, Array(500)).map(function (_, i) {return i;})[i]
+          }; 
+        })
+        
+      // Add Y axis
+        const y = d3.scaleLinear()
+          .domain( [Math.min(...defdata[g4])-0.01,Math.max(...defdata[g4]) + 0.1])
+          .range([ height, 0 ]);
+          
+        svg.select("#y-axis")
+            .transition()
+            .call(d3.axisLeft(y));
+     
+      // Give these new data to update line
+        line
+            .datum(rearrangedData)
+            .transition()
+            .duration(1000)
+            .attr("d", d3.line()
+            .x(function(d) { return x(+d.epoch) })
+            .y(function(d) { return y(+d.loss) })
+            );
+    svg
+    .select('rect')
+    .style("fill", "none")
+    .style("pointer-events", "all")
+    .attr('width', width)
+    .attr('height', height)
+    .on('mouseover', mouseover)
+    .on('mousemove', mousemove)
+    .on('mouseout', mouseout);
+         
+        
+       // What happens when the mouse move -> show the annotations at the right positions.
+    function mouseover() {
+        focus.style("opacity", 1)
+        focusText.style("opacity",1)
+    }
+    
+    function mousemove() {
+        // recover coordinate we need
+        var x0 = x.invert(d3.pointer(event)[0]);
+        var i = bisect(rearrangedData, x0, 1);
+        selectedData = rearrangedData[i]
+        focus
+          .attr("cx", x(selectedData.epoch))
+          .attr("cy", y(selectedData.loss))
+        if (i > 250){
+            focusText
+              .html("epoch:" + selectedData.epoch + "  -  " + g4 + " :" + Math.round((selectedData.loss + Number.EPSILON) * 1000) / 1000)
+              .attr("x", x(selectedData.epoch)-225)
+              .attr("y", y(selectedData.loss)-50)
+        } else {
+            focusText
+              .html("epoch:" + selectedData.epoch + "  -  " + g4 + " :" + Math.round((selectedData.loss + Number.EPSILON) * 1000) / 1000)
+              .attr("x", x(selectedData.epoch)+10)
+              .attr("y", y(selectedData.loss)-50)
+        }
+    }
+    function mouseout() {
+        focus.style("opacity", 0)
+        focusText.style("opacity", 0)
+    }
+    }
+
+    // When the button is changed, run the updateChart function
+    d3.select("#selectButton").on("change", function(event,d) {
+        // recover the option that has been chosen
+        const g1 = d3.select("#selectButton").property("value")
+        const g2 = d3.select("#selectButton2").property("value")
+        const g3 = d3.select("#selectButton3").property("value")
+        const g4 = d3.select("#selectButton4").property("value")
+        // run the updateChart function with this selected option
+        update(g1, g2, g3, g4)
+    })
+    d3.select("#selectButton2").on("change", function(event,d) {
+        // recover the option that has been chosen
+        const g1 = d3.select("#selectButton").property("value")
+        const g2 = d3.select("#selectButton2").property("value")
+        const g3 = d3.select("#selectButton3").property("value")
+        const g4 = d3.select("#selectButton4").property("value")
+        // run the updateChart function with this selected option
+        update(g1, g2, g3, g4)
+    })
+    d3.select("#selectButton3").on("change", function(event,d) {
+        // recover the option that has been chosen
+        const g1 = d3.select("#selectButton").property("value")
+        const g2 = d3.select("#selectButton2").property("value")
+        const g3 = d3.select("#selectButton3").property("value")
+        const g4 = d3.select("#selectButton4").property("value")
+        // run the updateChart function with this selected option
+        update(g1, g2, g3, g4)
+    })
+    d3.select("#selectButton4").on("change", function(event,d) {
+        // recover the option that has been chosen
+        const g1 = d3.select("#selectButton").property("value")
+        const g2 = d3.select("#selectButton2").property("value")
+        const g3 = d3.select("#selectButton3").property("value")
+        const g4 = d3.select("#selectButton4").property("value")
+        // run the updateChart function with this selected option
+        update(g1, g2, g3, g4)
+    })
+
+})
+</script>
+
+
 [//]: Scatter plot performance over time (1 per dataset)
 
-[//]: Accuracy, Loss over epoch (selectable for each dataset)
 
-## Conclusion
 
 ## References
 Dwivedi, Vijay Prakash and Rampášek, Ladislav and Galkin, Mikhail and Parviz, Ali and Wolf, Guy and Luu, Anh Tuan and Beaini, Dominique. [*Long Range Graph Benchmark*.](https://arxiv.org/abs/2206.08164) arXiv:2206.08164. Jan 16, 2023.
