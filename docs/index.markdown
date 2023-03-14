@@ -266,7 +266,6 @@ var margin = {top: 30, right: 30, bottom: 30, left: 30},
         height = 400 - margin.top - margin.bottom;
 
 // set the dimensions and margins of the graph
-console.log(window.innerWidth)
 if (window.innerWidth > 1000){
         width = screen.width/2 - margin.left - margin.right,
         height = 400 - margin.top - margin.bottom;
@@ -299,8 +298,7 @@ d3.json("public/results.json").then( function(data) {
           epoch:Array.apply(null, Array(500)).map(function (_, i) {return i;})[i]
       }; 
     })
-    
-    console.log(rearrangedData)
+   
     
     // add the options to the button
     d3.select("#selectButton")
@@ -560,7 +558,133 @@ d3.json("public/results.json").then( function(data) {
 
 [//]: Scatter plot performance over time (1 per dataset)
 
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz_2"></div>
 
+<script>
+
+var margin = {top: 30, right: 30, bottom: 30, left: 30},
+        width = window.innerWidth - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+
+// set the dimensions and margins of the graph
+if (window.innerWidth > 1000){
+        width = screen.width/2 - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+}
+
+const svg2 = d3.select("#my_dataviz_2")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+  const modelColorScale = d3.scaleOrdinal()
+                            .domain(["GCN", "GatedGCN", "GIN", "GAT", "SAN"])
+                            .range(d3.schemeSet2);
+var rowConverter = function (d) {
+        return {
+            time: parseFloat(d.time),
+            name: d.name,
+            model: d.model,
+            dataset: d.dataset,
+            techs: d.techs,
+            test: parseFloat(d.test),
+            train: JSON.parse(d.tacc).pop(),
+            val: JSON.parse(d.vacc).pop(),
+        };
+    };
+
+
+d3.csv("public/timeresult.csv", rowConverter).then( function(data) {
+        
+        let dtime = data.map(d => d.time);
+        console.log(dtime)
+      // Add X axis --> it is a date format
+        const x = d3.scaleLinear()
+          .domain([0,Math.max(...dtime) + 100])
+          .range([ 0, width ]);
+    
+        let dtest = data.map(d => d.test);
+        // Add Y axis
+        const y = d3.scaleLinear()
+          .domain( [Math.min(...dtest)-0.01,Math.max(...dtest) + 0.1])
+          .range([ height, 0 ]);
+      
+      svg2.append("g")
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(x));
+    
+      svg2.append("g")
+        .call(d3.axisLeft(y));
+      
+      // chart title
+      svg2.append("text")
+          .attr("transform", `translate(0, 0)`)
+          .attr("dy", "1em")
+          .attr("text-anchor", "start")
+          .style("fill", "#202630")
+          .style("font-size", 18)
+          .html("Accuracy vs Time");
+          
+    
+    var Tooltip = d3.select("#my_dataviz_2")
+    .append("div")
+    .style("opacity", 0)
+    .attr("class", "tooltip")
+    .style("background-color", "white")
+    .style("border", "solid")
+    .style("border-width", "2px")
+    .style("border-radius", "5px")
+    .style("padding", "5px")
+    
+    var mouseover = function(event, d) {
+        Tooltip
+          .style("opacity", 1)
+        d3.select(this)
+          .style("stroke", "black")
+          .style("opacity", 1)
+    }
+    var mousemove = function(event, d) {
+        console.log(d)
+        Tooltip
+          .html("Model " + d.model + " ran on " + d.dataset + " in " + Math.round((d.time + Number.EPSILON) * 1000) / 1000 + " seconds and reached " + Math.round((d.test + Number.EPSILON) * 1000) / 1000 + " accuracy")
+          .style("left", (d3.pointer(event)[0]+70) + "px")
+          .style("top", (d3.pointer(event)[1]) + "px")
+    }
+    var mouseleave = function(event, d) {
+        Tooltip
+          .style("opacity", 0)
+        d3.select(this)
+          .style("stroke", function(d){return modelColorScale(d.model)})
+          .style("opacity", 0.8)
+    }
+    
+      // POINTS
+      svg2.append('g')
+        .selectAll("dot")
+        .data(data.filter(d => d.time > 0))
+        .enter()
+        .append("circle")
+          .attr("stroke-width", "3")
+          .attr("opacity", 0.7)
+          .attr("stroke", function(d){return modelColorScale(d.model)})
+          .attr("fill", function(d){return modelColorScale(d.model) })
+          .attr("cx", function (d) { return x(d.time); } )
+          .attr("cy", function (d) { return y(d.test); } )
+          .attr("r", 3)
+          .on("mouseover", mouseover)
+        .on("mousemove", mousemove )
+        .on("mouseleave", mouseleave );
+          
+       var tooltip = d3.select('body')
+          .append('div')
+          .attr('class', 'tooltip')
+          .style("opacity", 0);
+      
+      });
+</script>
 
 ## References
 Dwivedi, Vijay Prakash and Rampášek, Ladislav and Galkin, Mikhail and Parviz, Ali and Wolf, Guy and Luu, Anh Tuan and Beaini, Dominique. [*Long Range Graph Benchmark*.](https://arxiv.org/abs/2206.08164) arXiv:2206.08164. Jan 16, 2023.
