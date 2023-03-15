@@ -18,9 +18,11 @@ the GPU docker image that has Cuda 11.7 support. (b6liu/dsc180b:gpu)
 
 Different parameters can be run on the file as well.
 
+```--datatype```: Where to extract dataset (LRGB for pascal and peptides, 3D for PSB)
+
 ```--dataset```: Dataset to run, currently only support all LRGB datasets. Defaults to PascalVOC-SP
 
-```--model```: Model to run, currently GNN, GIN, GAT, SAN
+```--model```: Model to run, currently GNN, GatedGCN, GIN, GAT, SAN
 
 ```--bz```: Batch size, defaults to 32
 
@@ -44,16 +46,33 @@ Different parameters can be run on the file as well.
 
 ```--hidden```: Hidden parameters, made after linearly encoding data
 
+```--scheduler```: Enable or disable scheduling on plateau
+
 Shortcut methods have been added:
 
 ```--add_edges```: ratio of edges to be created (fake, random connections between nodes)
 
-```--encode```: Positional encoding, currently only "lap" for laplacian encoding is supported
+```--encode```: Positional encoding, we support "lap" for laplacian encoding or "walk" for RWSE
 
-These are the recommended commands to run both LRGB datasets PascalVOC and peptides-func:
+```--encode_k```: number of features to be added by encoding
 
-```python run.py --model gin --dataset PascalVOC-SP --metric macrof1  --add_edges 1 --criterion weighted_cross_entropy```
-```python run.py --model gin --dataset peptides-func --task graph --metric ap  --add_edges 1```
+And for partial (GAT supported, distance weighting):
+
+```--partial```: Number of distance weighted layers, should be 1
+
+```--space```: Spacial representation of data (2 for 2d, 3 for 3d, etc)
+
+```--k```: for KNN in distance weighting
+
+These are the recommended commands to run all datasets on the best models:
+
+```python run.py --model san --dataset PascalVOC-SP --metric macrof1  --add_edges 1 --encode lap --encode_k 10```
+
+```python run.py --model san --dataset peptides-func --task graph --metric ap  --encode lap --encode_k 10```
+
+```python run.py --model san --datatype 3d --dataset psb --metric ap --encode walk --encode_k 10 --add_edges 1```
+
+You can find the results in the results folder, under the model, timestamped.
 
 ### Citations
 Thank you to Long Range Graph Benchmarks for the SAN implementation and datasets.
