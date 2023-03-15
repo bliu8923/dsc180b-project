@@ -2,6 +2,12 @@
 layout: page
 title: Home
 ---
+<p align="center">
+    <img src="public/graph.png" />
+</p>
+<font size="3">
+<em>Example Graph (Courtesy of Pytorch Geometric)</em>
+</font>
 
 ## Introduction
 
